@@ -11,34 +11,41 @@ struct ScoringView: View {
     @EnvironmentObject var viewModel: GameViewModel
     
     var body: some View {
-        List {
-            ForEach(viewModel.game.enabledStarters) { starter in
-                ScoringRow(
-                    starter: starter,
-                    linkedSubstitute: viewModel.getLinkedSubstitute(for: starter.id),
-                    availableSubstitutes: viewModel.game.substitutes,
-                    starters: viewModel.game.starters,
-                    onAddTry: {
-                        viewModel.addTry(to: starter.id)
-                    },
-                    onAddPenalty: {
-                        viewModel.addPenalty(to: starter.id)
-                    },
-                    onAddConversion: {
-                        viewModel.addConversion(to: starter.id)
-                    },
-                    onLinkSubstitute: { substituteId in
-                        viewModel.linkSubstitute(substituteId: substituteId, to: starter.id)
-                    },
-                    onUnlinkSubstitute: {
-                        viewModel.unlinkSubstitute(from: starter.id)
-                    },
-                    totalPoints: viewModel.getTotalPointsForTeamMember(starter.id)
-                )
+        ZStack {
+            LiquidGlassBackground()
+            
+            List {
+                ForEach(viewModel.game.enabledStarters) { starter in
+                    ScoringRow(
+                        starter: starter,
+                        linkedSubstitute: viewModel.getLinkedSubstitute(for: starter.id),
+                        availableSubstitutes: viewModel.game.substitutes,
+                        starters: viewModel.game.starters,
+                        onAddTry: {
+                            viewModel.addTry(to: starter.id)
+                        },
+                        onAddPenalty: {
+                            viewModel.addPenalty(to: starter.id)
+                        },
+                        onAddConversion: {
+                            viewModel.addConversion(to: starter.id)
+                        },
+                        onLinkSubstitute: { substituteId in
+                            viewModel.linkSubstitute(substituteId: substituteId, to: starter.id)
+                        },
+                        onUnlinkSubstitute: {
+                            viewModel.unlinkSubstitute(from: starter.id)
+                        },
+                        totalPoints: viewModel.getTotalPointsForTeamMember(starter.id)
+                    )
+                }
             }
+            .scrollContentBackground(.hidden)
         }
         .navigationTitle("Scoring")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 NavigationLink(destination: ScoreboardView()) {

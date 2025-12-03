@@ -17,59 +17,66 @@ struct SweepstakePlayersSetupView: View {
     }
     
     var body: some View {
-        Form {
-            Section {
-                HStack {
-                    Text("Selected for Game: \(selectedCount)/6")
-                        .font(.caption)
-                        .foregroundColor(selectedCount == 6 ? .green : .orange)
-                    
-                    Spacer()
-                    
-                    Button {
-                        showAddPlayer = true
-                    } label: {
-                        Label("Add Player", systemImage: "plus.circle.fill")
-                            .font(.caption)
-                    }
-                }
-            } header: {
-                Text("Current Game Selection")
-            } footer: {
-                Text("Select exactly 6 players for the current game. You can add or delete players from the master list below.")
-            }
+        ZStack {
+            LiquidGlassBackground()
             
-            Section {
-                if viewModel.masterPlayerList.isEmpty {
-                    Text("No players yet. Tap 'Add Player' to create one.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                } else {
-                    ForEach(viewModel.masterPlayerList) { player in
-                        SweepstakePlayerRow(
-                            player: player,
-                            isSelected: viewModel.isPlayerSelectedForGame(player.id),
-                            canSelect: selectedCount < 6 || viewModel.isPlayerSelectedForGame(player.id),
-                            onUpdate: { updatedPlayer in
-                                viewModel.updateSweepstakePlayer(updatedPlayer)
-                            },
-                            onToggleSelection: {
-                                viewModel.togglePlayerSelection(player.id)
-                            },
-                            onDelete: {
-                                viewModel.deleteMasterPlayer(player.id)
-                            }
-                        )
+            Form {
+                Section {
+                    HStack {
+                        Text("Selected for Game: \(selectedCount)/6")
+                            .font(.caption)
+                            .foregroundColor(selectedCount == 6 ? .green : .orange)
+                        
+                        Spacer()
+                        
+                        Button {
+                            showAddPlayer = true
+                        } label: {
+                            Label("Add Player", systemImage: "plus.circle.fill")
+                                .font(.caption)
+                        }
                     }
+                } header: {
+                    Text("Current Game Selection")
+                } footer: {
+                    Text("Select exactly 6 players for the current game. You can add or delete players from the master list below.")
                 }
-            } header: {
-                Text("All Players")
-            } footer: {
-                Text("Master list of all players. Changes persist between games.")
+                
+                Section {
+                    if viewModel.masterPlayerList.isEmpty {
+                        Text("No players yet. Tap 'Add Player' to create one.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(viewModel.masterPlayerList) { player in
+                            SweepstakePlayerRow(
+                                player: player,
+                                isSelected: viewModel.isPlayerSelectedForGame(player.id),
+                                canSelect: selectedCount < 6 || viewModel.isPlayerSelectedForGame(player.id),
+                                onUpdate: { updatedPlayer in
+                                    viewModel.updateSweepstakePlayer(updatedPlayer)
+                                },
+                                onToggleSelection: {
+                                    viewModel.togglePlayerSelection(player.id)
+                                },
+                                onDelete: {
+                                    viewModel.deleteMasterPlayer(player.id)
+                                }
+                            )
+                        }
+                    }
+                } header: {
+                    Text("All Players")
+                } footer: {
+                    Text("Master list of all players. Changes persist between games.")
+                }
             }
+            .scrollContentBackground(.hidden)
         }
         .navigationTitle("Sweepstake Players")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .sheet(isPresented: $showAddPlayer) {
             NavigationStack {
                 Form {

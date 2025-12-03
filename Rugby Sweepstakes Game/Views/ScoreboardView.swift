@@ -20,21 +20,28 @@ struct ScoreboardView: View {
     }
     
     var body: some View {
-        List {
-            ForEach(Array(sortedPlayers.enumerated()), id: \.element.id) { index, player in
-                Section {
-                    ScoreboardPlayerRow(
-                        player: player,
-                        rank: index + 1,
-                        totalPoints: viewModel.getTotalPoints(for: player.id),
-                        isWinner: winners.contains { $0.id == player.id },
-                        viewModel: viewModel
-                    )
+        ZStack {
+            LiquidGlassBackground()
+            
+            List {
+                ForEach(Array(sortedPlayers.enumerated()), id: \.element.id) { index, player in
+                    Section {
+                        ScoreboardPlayerRow(
+                            player: player,
+                            rank: index + 1,
+                            totalPoints: viewModel.getTotalPoints(for: player.id),
+                            isWinner: winners.contains { $0.id == player.id },
+                            viewModel: viewModel
+                        )
+                    }
                 }
             }
+            .scrollContentBackground(.hidden)
         }
         .navigationTitle("Scoreboard")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
@@ -184,7 +191,7 @@ struct FinalResultsView: View {
                     }
                     .padding()
                     .frame(maxWidth: .infinity)
-                    .background(Color.yellow.opacity(0.1))
+                    .background(Color.yellow.opacity(0.12))
                     .cornerRadius(12)
                     
                     // Final standings
@@ -213,7 +220,7 @@ struct FinalResultsView: View {
                                     .foregroundColor(.blue)
                             }
                             .padding()
-                            .background(Color(.systemGray6))
+                            .background(Color.white.opacity(0.7))
                             .cornerRadius(8)
                         }
                     }
@@ -254,7 +261,7 @@ struct FinalResultsView: View {
                                 }
                             }
                             .padding()
-                            .background(Color(.systemGray6))
+                            .background(Color.white.opacity(0.7))
                             .cornerRadius(8)
                         }
                     }
@@ -263,6 +270,9 @@ struct FinalResultsView: View {
             }
             .navigationTitle("Final Results")
             .navigationBarTitleDisplayMode(.inline)
+            .background(LiquidGlassBackground())
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {

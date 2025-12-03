@@ -18,48 +18,55 @@ struct TeamImportView: View {
     
     var body: some View {
         NavigationStack {
-            List {
-                if extractedPlayers.isEmpty {
-                    Section {
-                        Text("No players were detected in the image. Please try again with a clearer photo.")
-                            .foregroundColor(.secondary)
-                    }
-                } else {
-                    Section {
-                        Text("Review and edit the extracted players. Select which players to import as starters.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Section {
-                        ForEach(Array(extractedPlayers.enumerated()), id: \.offset) { index, player in
-                            PlayerImportRow(
-                                player: player,
-                                isSelected: selectedPlayers.contains(index),
-                                editedName: editedPlayers[index] ?? player.name,
-                                editedNumber: editedNumbers[index] ?? player.number,
-                                onToggle: {
-                                    if selectedPlayers.contains(index) {
-                                        selectedPlayers.remove(index)
-                                    } else {
-                                        selectedPlayers.insert(index)
-                                    }
-                                },
-                                onNameChange: { newName in
-                                    editedPlayers[index] = newName
-                                },
-                                onNumberChange: { newNumber in
-                                    editedNumbers[index] = newNumber
-                                }
-                            )
+            ZStack {
+                LiquidGlassBackground()
+                
+                List {
+                    if extractedPlayers.isEmpty {
+                        Section {
+                            Text("No players were detected in the image. Please try again with a clearer photo.")
+                                .foregroundColor(.secondary)
                         }
-                    } header: {
-                        Text("Detected Players (\(extractedPlayers.count))")
+                    } else {
+                        Section {
+                            Text("Review and edit the extracted players. Select which players to import as starters.")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Section {
+                            ForEach(Array(extractedPlayers.enumerated()), id: \.offset) { index, player in
+                                PlayerImportRow(
+                                    player: player,
+                                    isSelected: selectedPlayers.contains(index),
+                                    editedName: editedPlayers[index] ?? player.name,
+                                    editedNumber: editedNumbers[index] ?? player.number,
+                                    onToggle: {
+                                        if selectedPlayers.contains(index) {
+                                            selectedPlayers.remove(index)
+                                        } else {
+                                            selectedPlayers.insert(index)
+                                        }
+                                    },
+                                    onNameChange: { newName in
+                                        editedPlayers[index] = newName
+                                    },
+                                    onNumberChange: { newNumber in
+                                        editedNumbers[index] = newNumber
+                                    }
+                                )
+                            }
+                        } header: {
+                            Text("Detected Players (\(extractedPlayers.count))")
+                        }
                     }
                 }
+                .scrollContentBackground(.hidden)
             }
             .navigationTitle("Import Team")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
