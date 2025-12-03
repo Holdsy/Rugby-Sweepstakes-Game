@@ -12,14 +12,35 @@ import Combine
 @MainActor
 class GameViewModel: ObservableObject {
     @Published var game: Game
+    @Published var masterPlayerList: [SweepstakePlayer] = []
     private let persistenceService = GamePersistenceService()
     
     init() {
+        // Initialize game first (required before using self)
+        self.game = Game()
+        self.masterPlayerList = []
+        
+        // Load master player list
+        masterPlayerList = persistenceService.loadMasterPlayerList()
+        
+        // Initialize default players if master list is empty
+        if masterPlayerList.isEmpty {
+            for i in 1...6 {
+                let color = ColorData.color(at: i - 1)
+                masterPlayerList.append(SweepstakePlayer(name: "Player \(i)", color: color))
+            }
+            saveMasterPlayerList()
+        } else {
+            // Ensure all existing players have unique colors
+            ensureUniqueColors()
+        }
+        
         // Try to load existing game, or create a new one
         if let savedGame = persistenceService.loadGame() {
             self.game = savedGame
+            // Sync selected players with master list (in case master list was updated)
+            syncSelectedPlayersWithMaster()
         } else {
-            self.game = Game()
             initializeDefaultGame()
         }
         saveGame()
@@ -28,12 +49,9 @@ class GameViewModel: ObservableObject {
     // MARK: - Initialization
     
     private func initializeDefaultGame() {
-        // Initialize with default 6 sweepstake players
-        var players: [SweepstakePlayer] = []
-        for i in 1...6 {
-            players.append(SweepstakePlayer(name: "Player \(i)"))
-        }
-        game.sweepstakePlayers = players
+        // Initialize with first 6 players from master list (or all if less than 6)
+        game.sweepstakePlayers = Array(masterPlayerList.prefix(6))
+        syncSelectedPlayersWithMaster()
         
         // Initialize with 15 starters and 8 substitutes (empty for user to fill)
         var members: [TeamMember] = []
@@ -108,10 +126,135 @@ class GameViewModel: ObservableObject {
     // MARK: - Sweepstake Players Management
     
     func updateSweepstakePlayer(_ player: SweepstakePlayer) {
+        // Update in master list
+        if let index = masterPlayerList.firstIndex(where: { $0.id == player.id }) {
+            masterPlayerList[index] = player
+            saveMasterPlayerList()
+        }
+        
+        // Update in current game if selected
         if let index = game.sweepstakePlayers.firstIndex(where: { $0.id == player.id }) {
             game.sweepstakePlayers[index] = player
             saveGame()
         }
+    }
+    
+    func addMasterPlayer(name: String) {
+        let uniqueColor = getNextAvailableColor()
+        let newPlayer = SweepstakePlayer(name: name, color: uniqueColor)
+        masterPlayerList.append(newPlayer)
+        saveMasterPlayerList()
+    }
+    
+    // MARK: - Color Management
+    
+    private func getNextAvailableColor() -> ColorData {
+        let usedColors = Set(masterPlayerList.map { colorToString($0.color) })
+        return getNextAvailableColor(excluding: usedColors)
+    }
+    
+    private func ensureUniqueColors() {
+        var assignedColorStrings: Set<String> = []
+        var changed = false
+        
+        // Go through each player and ensure they have a unique color
+        for index in masterPlayerList.indices {
+            let currentColorString = colorToString(masterPlayerList[index].color)
+            
+            if assignedColorStrings.contains(currentColorString) {
+                // This color is already used, assign a new unique one
+                let newColor = getNextAvailableColor(excluding: assignedColorStrings)
+                masterPlayerList[index].color = newColor
+                let newColorString = colorToString(newColor)
+                assignedColorStrings.insert(newColorString)
+                changed = true
+            } else {
+                // This color is unique, keep it
+                assignedColorStrings.insert(currentColorString)
+            }
+        }
+        
+        if changed {
+            saveMasterPlayerList()
+        }
+    }
+    
+    private func colorToString(_ color: ColorData) -> String {
+        // Round to avoid floating point precision issues
+        String(format: "%.2f,%.2f,%.2f", color.red, color.green, color.blue)
+    }
+    
+    private func getNextAvailableColor(excluding usedColors: Set<String>) -> ColorData {
+        // Try each available color in order
+        for colorTuple in ColorData.allAvailableColors {
+            let colorString = String(format: "%.2f,%.2f,%.2f", colorTuple.0, colorTuple.1, colorTuple.2)
+            if !usedColors.contains(colorString) {
+                return ColorData(red: colorTuple.0, green: colorTuple.1, blue: colorTuple.2)
+            }
+        }
+        
+        // If all colors are used, cycle through them based on count
+        let colorIndex = usedColors.count % ColorData.allAvailableColors.count
+        return ColorData.color(at: colorIndex)
+    }
+    
+    func deleteMasterPlayer(_ playerId: UUID) {
+        // Remove from current game first if selected
+        if isPlayerSelectedForGame(playerId) {
+            game.sweepstakePlayers.removeAll { $0.id == playerId }
+            saveGame()
+        }
+        
+        // Remove from master list
+        masterPlayerList.removeAll { $0.id == playerId }
+        saveMasterPlayerList()
+    }
+    
+    func canDeletePlayer(_ playerId: UUID) -> Bool {
+        // Can always delete, but if in game, it will be removed from game first
+        return true
+    }
+    
+    func isPlayerSelectedForGame(_ playerId: UUID) -> Bool {
+        game.sweepstakePlayers.contains { $0.id == playerId }
+    }
+    
+    func togglePlayerSelection(_ playerId: UUID) {
+        if isPlayerSelectedForGame(playerId) {
+            // Deselect - remove from game
+            game.sweepstakePlayers.removeAll { $0.id == playerId }
+        } else {
+            // Select - add to game (only if less than 6)
+            if game.sweepstakePlayers.count < 6 {
+                if let player = masterPlayerList.first(where: { $0.id == playerId }) {
+                    // Create a fresh copy without game-specific data
+                    let newPlayer = SweepstakePlayer(
+                        id: player.id,
+                        name: player.name,
+                        color: player.color,
+                        assignedTeamMemberIds: [],
+                        drawRounds: []
+                    )
+                    game.sweepstakePlayers.append(newPlayer)
+                }
+            }
+        }
+        saveGame()
+    }
+    
+    private func syncSelectedPlayersWithMaster() {
+        // Update selected players to match master list (by ID)
+        var updatedSelected: [SweepstakePlayer] = []
+        for selectedPlayer in game.sweepstakePlayers {
+            if let masterPlayer = masterPlayerList.first(where: { $0.id == selectedPlayer.id }) {
+                // Keep game-specific data but update name/color from master
+                var updated = selectedPlayer
+                updated.name = masterPlayer.name
+                updated.color = masterPlayer.color
+                updatedSelected.append(updated)
+            }
+        }
+        game.sweepstakePlayers = updatedSelected
     }
     
     // MARK: - Draw Logic
@@ -257,6 +400,7 @@ class GameViewModel: ObservableObject {
     func resetGame() {
         persistenceService.clearGame()
         game = Game()
+        // Keep master player list, just reset game selection
         initializeDefaultGame()
         saveGame()
     }
@@ -265,6 +409,10 @@ class GameViewModel: ObservableObject {
     
     private func saveGame() {
         persistenceService.saveGame(game)
+    }
+    
+    private func saveMasterPlayerList() {
+        persistenceService.saveMasterPlayerList(masterPlayerList)
     }
 }
 

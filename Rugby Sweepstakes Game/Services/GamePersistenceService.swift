@@ -9,6 +9,7 @@ import Foundation
 
 class GamePersistenceService {
     private let gameKey = "rugby_sweepstake_game"
+    private let masterPlayersKey = "rugby_sweepstake_master_players"
     
     func saveGame(_ game: Game) {
         if let encoded = try? JSONEncoder().encode(game) {
@@ -26,6 +27,22 @@ class GamePersistenceService {
     
     func clearGame() {
         UserDefaults.standard.removeObject(forKey: gameKey)
+    }
+    
+    // MARK: - Master Player List Persistence
+    
+    func saveMasterPlayerList(_ players: [SweepstakePlayer]) {
+        if let encoded = try? JSONEncoder().encode(players) {
+            UserDefaults.standard.set(encoded, forKey: masterPlayersKey)
+        }
+    }
+    
+    func loadMasterPlayerList() -> [SweepstakePlayer] {
+        guard let data = UserDefaults.standard.data(forKey: masterPlayersKey),
+              let players = try? JSONDecoder().decode([SweepstakePlayer].self, from: data) else {
+            return []
+        }
+        return players
     }
 }
 

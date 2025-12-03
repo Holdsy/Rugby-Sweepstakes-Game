@@ -172,7 +172,7 @@ struct SubstitutePickerView: View {
     var body: some View {
         NavigationStack {
             List {
-                if let currentLinkedSubstituteId = currentLinkedSubstituteId,
+                if currentLinkedSubstituteId != nil,
                    onUnlink != nil {
                     Section {
                         Button(role: .destructive) {
