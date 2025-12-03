@@ -17,6 +17,7 @@ struct ScoringView: View {
                     starter: starter,
                     linkedSubstitute: viewModel.getLinkedSubstitute(for: starter.id),
                     availableSubstitutes: viewModel.game.substitutes,
+                    starters: viewModel.game.starters,
                     onAddTry: {
                         viewModel.addTry(to: starter.id)
                     },
@@ -52,6 +53,7 @@ struct ScoringRow: View {
     let starter: TeamMember
     let linkedSubstitute: TeamMember?
     let availableSubstitutes: [TeamMember]
+    let starters: [TeamMember]
     let onAddTry: () -> Void
     let onAddPenalty: () -> Void
     let onAddConversion: () -> Void
@@ -174,6 +176,7 @@ struct ScoringRow: View {
         .sheet(isPresented: $showSubstitutePicker) {
             SubstitutePickerView(
                 substitutes: availableSubstitutes,
+                starters: starters,
                 currentLinkedSubstituteId: starter.linkedSubstituteId,
                 onSelect: { substituteId in
                     onLinkSubstitute(substituteId)

@@ -45,6 +45,7 @@ struct TeamSetupView: View {
                     shirtNumber: index + 1, // 1-15 for starters
                     isStarter: true,
                     availableSubstitutes: viewModel.game.substitutes,
+                    starters: viewModel.game.starters,
                     onUpdate: { updatedMember in
                         viewModel.updateTeamMember(updatedMember)
                     },
@@ -76,6 +77,7 @@ struct TeamSetupView: View {
                     shirtNumber: index + 16, // 16-23 for substitutes
                     isStarter: false,
                     availableSubstitutes: [],
+                    starters: viewModel.game.starters,
                     onUpdate: { updatedMember in
                         viewModel.updateTeamMember(updatedMember)
                     }
@@ -168,6 +170,7 @@ struct TeamMemberRow: View {
     let shirtNumber: Int
     let isStarter: Bool
     let availableSubstitutes: [TeamMember]
+    let starters: [TeamMember]
     let onUpdate: (TeamMember) -> Void
     var onToggleEnabled: (() -> Void)? = nil
     var onLinkSubstitute: ((UUID) -> Void)? = nil
@@ -181,6 +184,7 @@ struct TeamMemberRow: View {
         shirtNumber: Int,
         isStarter: Bool,
         availableSubstitutes: [TeamMember],
+        starters: [TeamMember],
         onUpdate: @escaping (TeamMember) -> Void,
         onToggleEnabled: (() -> Void)? = nil,
         onLinkSubstitute: ((UUID) -> Void)? = nil,
@@ -190,6 +194,7 @@ struct TeamMemberRow: View {
         self.shirtNumber = shirtNumber
         self.isStarter = isStarter
         self.availableSubstitutes = availableSubstitutes
+        self.starters = starters
         self.onUpdate = onUpdate
         self.onToggleEnabled = onToggleEnabled
         self.onLinkSubstitute = onLinkSubstitute
@@ -249,8 +254,14 @@ struct TeamMemberRow: View {
         .sheet(isPresented: $showSubstitutePicker) {
             SubstitutePickerView(
                 substitutes: availableSubstitutes,
+                starters: starters,
+                currentLinkedSubstituteId: member.linkedSubstituteId,
                 onSelect: { substituteId in
                     onLinkSubstitute?(substituteId)
+                    showSubstitutePicker = false
+                },
+                onUnlink: {
+                    onUnlinkSubstitute?()
                     showSubstitutePicker = false
                 }
             )
@@ -260,9 +271,31 @@ struct TeamMemberRow: View {
 
 struct SubstitutePickerView: View {
     let substitutes: [TeamMember]
+    let starters: [TeamMember]
     var currentLinkedSubstituteId: UUID? = nil
     let onSelect: (UUID) -> Void
     var onUnlink: (() -> Void)? = nil
+    
+    // Get shirt number for a substitute (16-23 based on index)
+    private func getShirtNumber(for substitute: TeamMember) -> Int {
+        if let index = substitutes.firstIndex(where: { $0.id == substitute.id }) {
+            return index + 16
+        }
+        // Fallback: try to extract from position field
+        if let position = substitute.position,
+           let range = position.range(of: "\\d+", options: .regularExpression),
+           let number = Int(String(position[range])) {
+            return number
+        }
+        return 0
+    }
+    
+    // Find which starter this substitute is linked to
+    private func getSubstitutedFor(for substitute: TeamMember) -> TeamMember? {
+        starters.first { starter in
+            starter.linkedSubstituteId == substitute.id
+        }
+    }
     
     var body: some View {
         NavigationStack {
@@ -282,26 +315,39 @@ struct SubstitutePickerView: View {
                 }
                 
                 Section {
-                    ForEach(substitutes) { substitute in
+                    ForEach(Array(substitutes.enumerated()), id: \.element.id) { index, substitute in
+                        let shirtNumber = index + 16
+                        let substitutedFor = getSubstitutedFor(for: substitute)
+                        
                         Button {
                             onSelect(substitute.id)
                         } label: {
-                            HStack {
-                                VStack(alignment: .leading) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("#\(shirtNumber)")
+                                        .font(.headline)
+                                        .foregroundColor(.secondary)
                                     Text(substitute.name.isEmpty ? "Unnamed Substitute" : substitute.name)
                                         .foregroundColor(.primary)
-                                    if let position = substitute.position {
-                                        Text(position)
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
+                                    
+                                    Spacer()
+                                    
+                                    if substitute.id == currentLinkedSubstituteId {
+                                        Image(systemName: "checkmark")
+                                            .foregroundColor(.blue)
                                     }
                                 }
                                 
-                                Spacer()
-                                
-                                if substitute.id == currentLinkedSubstituteId {
-                                    Image(systemName: "checkmark")
-                                        .foregroundColor(.blue)
+                                if let starter = substitutedFor,
+                                   let starterIndex = starters.firstIndex(where: { $0.id == starter.id }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "arrow.right.circle.fill")
+                                            .font(.caption2)
+                                            .foregroundColor(.blue)
+                                        Text("Substitutes for #\(starterIndex + 1) \(starter.name)")
+                                            .font(.caption)
+                                            .foregroundColor(.blue)
+                                    }
                                 }
                             }
                         }
