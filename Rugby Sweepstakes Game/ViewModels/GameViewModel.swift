@@ -123,6 +123,74 @@ class GameViewModel: ObservableObject {
         game.teamMembers.first { $0.id == id }
     }
     
+    // MARK: - Team Import
+    
+    func importPlayers(_ players: [ExtractedPlayer]) {
+        // Sort players by number (if available)
+        let sortedPlayers = players.sorted { p1, p2 in
+            let num1 = p1.number ?? 999
+            let num2 = p2.number ?? 999
+            return num1 < num2
+        }
+        
+        // Create a mutable copy of team members array
+        var updatedTeamMembers = game.teamMembers
+        var playerIndex = 0
+        
+        // Fill in empty starter slots first
+        let starterSlots = updatedTeamMembers.enumerated().filter { $0.element.isStarter }
+        
+        for (index, _) in starterSlots {
+            if playerIndex >= sortedPlayers.count {
+                break
+            }
+            
+            if playerIndex >= 15 {
+                break
+            }
+            
+            var member = updatedTeamMembers[index]
+            // Convert name to Title Case
+            member.name = sortedPlayers[playerIndex].name.toTitleCase()
+            
+            // Store jersey number in position field if available
+            if let number = sortedPlayers[playerIndex].number {
+                member.position = "Jersey #\(number)"
+            }
+            
+            updatedTeamMembers[index] = member
+            playerIndex += 1
+        }
+        
+        // Fill in empty substitute slots if there are more players
+        let substituteSlots = updatedTeamMembers.enumerated().filter { $0.element.isSubstitute }
+        
+        for (index, _) in substituteSlots {
+            if playerIndex >= sortedPlayers.count {
+                break
+            }
+            
+            if playerIndex >= (15 + 8) {
+                break
+            }
+            
+            var member = updatedTeamMembers[index]
+            // Convert name to Title Case
+            member.name = sortedPlayers[playerIndex].name.toTitleCase()
+            
+            if let number = sortedPlayers[playerIndex].number {
+                member.position = "Jersey #\(number)"
+            }
+            
+            updatedTeamMembers[index] = member
+            playerIndex += 1
+        }
+        
+        // Update the entire array to trigger @Published refresh
+        game.teamMembers = updatedTeamMembers
+        saveGame()
+    }
+    
     // MARK: - Sweepstake Players Management
     
     func updateSweepstakePlayer(_ player: SweepstakePlayer) {
@@ -402,6 +470,36 @@ class GameViewModel: ObservableObject {
         game = Game()
         // Keep master player list, just reset game selection
         initializeDefaultGame()
+        saveGame()
+    }
+    
+    func resetTeam() {
+        // Clear all team member information (starters and substitutes)
+        var members: [TeamMember] = []
+        
+        // Add 15 empty starters
+        for _ in 1...15 {
+            members.append(TeamMember(
+                name: "",
+                position: nil,
+                isStarter: true,
+                isSubstitute: false,
+                isEnabledForGame: true
+            ))
+        }
+        
+        // Add 8 empty substitutes
+        for _ in 1...8 {
+            members.append(TeamMember(
+                name: "",
+                position: nil,
+                isStarter: false,
+                isSubstitute: true,
+                isEnabledForGame: false
+            ))
+        }
+        
+        game.teamMembers = members
         saveGame()
     }
     

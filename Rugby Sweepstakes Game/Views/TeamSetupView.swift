@@ -9,22 +9,40 @@ import SwiftUI
 
 struct TeamSetupView: View {
     @EnvironmentObject var viewModel: GameViewModel
+    @State private var showPhotoPicker = false
+    @State private var selectedImage: UIImage?
+    @State private var extractedPlayers: [ExtractedPlayer] = []
+    @State private var showImportReview = false
+    @State private var isProcessingImage = false
+    @State private var showResetConfirmation = false
     
     var body: some View {
         Form {
             Section {
-                Text("Starters: \(viewModel.game.starters.count)/15")
-                    .font(.caption)
-                    .foregroundColor(viewModel.game.starters.count == 15 ? .green : .orange)
+                HStack {
+                    Text("Starters: \(viewModel.game.starters.count)/15")
+                        .font(.caption)
+                        .foregroundColor(viewModel.game.starters.count == 15 ? .green : .orange)
+                    
+                    Spacer()
+                    
+                    Button {
+                        showPhotoPicker = true
+                    } label: {
+                        Image(systemName: "photo.on.rectangle")
+                            .font(.caption)
+                    }
+                }
             } header: {
                 Text("Starters")
             } footer: {
-                Text("Add exactly 15 starting players. Toggle to enable/disable players for the sweepstake.")
+                Text("Add exactly 15 starting players. Toggle to enable/disable players for the sweepstake. Tap the photo icon to import team from a photo.")
             }
             
-            ForEach(viewModel.game.starters) { member in
+            ForEach(Array(viewModel.game.starters.enumerated()), id: \.element.id) { index, member in
                 TeamMemberRow(
                     member: member,
+                    shirtNumber: index + 1, // 1-15 for starters
                     isStarter: true,
                     availableSubstitutes: viewModel.game.substitutes,
                     onUpdate: { updatedMember in
@@ -52,9 +70,10 @@ struct TeamSetupView: View {
                 Text("Add exactly 8 substitutes. You can link substitutes to starters.")
             }
             
-            ForEach(viewModel.game.substitutes) { member in
+            ForEach(Array(viewModel.game.substitutes.enumerated()), id: \.element.id) { index, member in
                 TeamMemberRow(
                     member: member,
+                    shirtNumber: index + 16, // 16-23 for substitutes
                     isStarter: false,
                     availableSubstitutes: [],
                     onUpdate: { updatedMember in
@@ -65,11 +84,88 @@ struct TeamSetupView: View {
         }
         .navigationTitle("Team Setup")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    showResetConfirmation = true
+                } label: {
+                    Image(systemName: "arrow.counterclockwise")
+                }
+            }
+        }
+        .alert("Reset Team", isPresented: $showResetConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Reset", role: .destructive) {
+                viewModel.resetTeam()
+            }
+        } message: {
+            Text("Are you sure you want to clear all team information? This will remove all player names and cannot be undone.")
+        }
+        .sheet(isPresented: $showPhotoPicker) {
+            PhotoPickerView(selectedImage: $selectedImage) {
+                showPhotoPicker = false
+                if let image = selectedImage {
+                    processImage(image)
+                }
+            }
+        }
+        .sheet(isPresented: $showImportReview) {
+            TeamImportView(
+                extractedPlayers: extractedPlayers,
+                onImport: { players in
+                    viewModel.importPlayers(players)
+                    showImportReview = false
+                    selectedImage = nil
+                    extractedPlayers = []
+                },
+                onCancel: {
+                    showImportReview = false
+                    selectedImage = nil
+                    extractedPlayers = []
+                }
+            )
+        }
+        .overlay {
+            if isProcessingImage {
+                ZStack {
+                    Color.black.opacity(0.3)
+                        .ignoresSafeArea()
+                    
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("Extracting player information...")
+                            .foregroundColor(.white)
+                            .font(.headline)
+                    }
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                }
+            }
+        }
+    }
+    
+    private func processImage(_ image: UIImage) {
+        isProcessingImage = true
+        
+        Task {
+            let players = await TeamPhotoImporter.extractPlayers(from: image)
+            
+            await MainActor.run {
+                isProcessingImage = false
+                extractedPlayers = players
+                if !players.isEmpty {
+                    showImportReview = true
+                }
+            }
+        }
     }
 }
 
 struct TeamMemberRow: View {
     let member: TeamMember
+    let shirtNumber: Int
     let isStarter: Bool
     let availableSubstitutes: [TeamMember]
     let onUpdate: (TeamMember) -> Void
@@ -78,11 +174,11 @@ struct TeamMemberRow: View {
     var onUnlinkSubstitute: (() -> Void)? = nil
     
     @State private var name: String
-    @State private var position: String
     @State private var showSubstitutePicker = false
     
     init(
         member: TeamMember,
+        shirtNumber: Int,
         isStarter: Bool,
         availableSubstitutes: [TeamMember],
         onUpdate: @escaping (TeamMember) -> Void,
@@ -91,6 +187,7 @@ struct TeamMemberRow: View {
         onUnlinkSubstitute: (() -> Void)? = nil
     ) {
         self.member = member
+        self.shirtNumber = shirtNumber
         self.isStarter = isStarter
         self.availableSubstitutes = availableSubstitutes
         self.onUpdate = onUpdate
@@ -98,26 +195,24 @@ struct TeamMemberRow: View {
         self.onLinkSubstitute = onLinkSubstitute
         self.onUnlinkSubstitute = onUnlinkSubstitute
         _name = State(initialValue: member.name)
-        _position = State(initialValue: member.position ?? "")
     }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            TextField("Name", text: $name)
-                .textFieldStyle(.roundedBorder)
-                .onChange(of: name) { _, newValue in
-                    var updated = member
-                    updated.name = newValue
-                    onUpdate(updated)
-                }
-            
-            TextField("Position (optional)", text: $position)
-                .textFieldStyle(.roundedBorder)
-                .onChange(of: position) { _, newValue in
-                    var updated = member
-                    updated.position = newValue.isEmpty ? nil : newValue
-                    onUpdate(updated)
-                }
+            HStack(spacing: 8) {
+                Text("#\(shirtNumber)")
+                    .font(.headline)
+                    .foregroundColor(.secondary)
+                    .frame(width: 35, alignment: .leading)
+                
+                TextField("Name", text: $name)
+                    .textFieldStyle(.roundedBorder)
+                    .onChange(of: name) { _, newValue in
+                        var updated = member
+                        updated.name = newValue
+                        onUpdate(updated)
+                    }
+            }
             
             if isStarter {
                 Toggle("Enabled for Game", isOn: Binding(
