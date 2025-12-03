@@ -9,62 +9,96 @@ import SwiftUI
 
 struct DrawResultsView: View {
     @EnvironmentObject var viewModel: GameViewModel
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         ZStack {
             LiquidGlassBackground()
             
-            List {
-                ForEach(viewModel.game.sweepstakePlayers) { player in
-                    Section {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Circle()
-                                    .fill(player.color.color)
-                                    .frame(width: 24, height: 24)
-                                Text(player.name)
-                                    .font(.headline)
-                            }
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Header matching HomeView style
+                    HStack(spacing: 8) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.title3.weight(.semibold))
+                                .foregroundColor(.white)
+                        }
+                        .buttonStyle(.plain)
+                        
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Draw Results")
+                                .font(.largeTitle.weight(.bold))
+                                .foregroundStyle(.white)
                             
-                            if player.assignedTeamMemberIds.isEmpty {
-                                Text("No team members assigned")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            } else {
-                                // Group by rounds
-                                let rounds = getRoundsForPlayer(player)
-                                
-                                ForEach(Array(rounds.keys.sorted()), id: \.self) { roundNumber in
-                                    VStack(alignment: .leading, spacing: 8) {
-                                        Text("Round \(roundNumber)")
-                                            .font(.subheadline)
-                                            .fontWeight(.semibold)
-                                            .foregroundColor(.secondary)
+                            Text("See which sweepstake players drew which team members.")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.9))
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 16)
+                    
+                    // Player result cards
+                    VStack(spacing: 16) {
+                        ForEach(viewModel.game.sweepstakePlayers) { player in
+                            GlassCard {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    HStack(spacing: 10) {
+                                        Circle()
+                                            .fill(player.color.color)
+                                            .frame(width: 28, height: 28)
                                         
-                                        ForEach(rounds[roundNumber] ?? [], id: \.id) { member in
-                                            if let linkedSubstitute = viewModel.getLinkedSubstitute(for: member.id) {
-                                                Text("• \(member.displayName(linkedSubstitute: linkedSubstitute))")
-                                                    .font(.caption)
-                                            } else {
-                                                Text("• \(member.name)\(member.position.map { " - " + $0 } ?? "")")
-                                                    .font(.caption)
+                                        Text(player.name)
+                                            .font(.headline)
+                                        
+                                        Spacer()
+                                    }
+                                    
+                                    if player.assignedTeamMemberIds.isEmpty {
+                                        Text("No team members assigned")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    } else {
+                                        let rounds = getRoundsForPlayer(player)
+                                        
+                                        VStack(alignment: .leading, spacing: 8) {
+                                            ForEach(Array(rounds.keys.sorted()), id: \.self) { roundNumber in
+                                                VStack(alignment: .leading, spacing: 4) {
+                                                    Text("Round \(roundNumber)")
+                                                        .font(.subheadline.weight(.semibold))
+                                                        .foregroundColor(.secondary)
+                                                    
+                                                    ForEach(rounds[roundNumber] ?? [], id: \.id) { member in
+                                                        if let linkedSubstitute = viewModel.getLinkedSubstitute(for: member.id) {
+                                                            Text("• \(member.displayName(linkedSubstitute: linkedSubstitute))")
+                                                                .font(.caption)
+                                                        } else {
+                                                            Text("• \(member.name)\(member.position.map { " - " + $0 } ?? "")")
+                                                                .font(.caption)
+                                                        }
+                                                    }
+                                                }
                                             }
                                         }
+                                        .padding(.leading, 2)
                                     }
-                                    .padding(.leading, 8)
                                 }
                             }
                         }
-                        .padding(.vertical, 4)
                     }
+                    .padding(.horizontal)
+                    
+                    Spacer(minLength: 24)
                 }
+                .padding(.bottom, 24)
             }
-            .scrollContentBackground(.hidden)
         }
-        .navigationTitle("Draw Results")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar(.hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 NavigationLink {

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SweepstakePlayersSetupView: View {
     @EnvironmentObject var viewModel: GameViewModel
+    @Environment(\.dismiss) private var dismiss
     @State private var showAddPlayer = false
     @State private var newPlayerName = ""
     
@@ -20,63 +21,110 @@ struct SweepstakePlayersSetupView: View {
         ZStack {
             LiquidGlassBackground()
             
-            Form {
-                Section {
-                    HStack {
-                        Text("Selected for Game: \(selectedCount)/6")
-                            .font(.caption)
-                            .foregroundColor(selectedCount == 6 ? .green : .orange)
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Match HomeView / TeamSetup header
+                    HStack(spacing: 8) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.title3.weight(.semibold))
+                                .foregroundColor(.white)
+                        }
+                        .buttonStyle(.plain)
+                        
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Sweepstake Players")
+                                .font(.largeTitle.weight(.bold))
+                                .foregroundStyle(.white)
+                            
+                            Text("Manage the master list and choose 6 players for this game.")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.9))
+                        }
                         
                         Spacer()
-                        
-                        Button {
-                            showAddPlayer = true
-                        } label: {
-                            Label("Add Player", systemImage: "plus.circle.fill")
-                                .font(.caption)
-                        }
                     }
-                } header: {
-                    Text("Current Game Selection")
-                } footer: {
-                    Text("Select exactly 6 players for the current game. You can add or delete players from the master list below.")
-                }
-                
-                Section {
-                    if viewModel.masterPlayerList.isEmpty {
-                        Text("No players yet. Tap 'Add Player' to create one.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    } else {
-                        ForEach(viewModel.masterPlayerList) { player in
-                            SweepstakePlayerRow(
-                                player: player,
-                                isSelected: viewModel.isPlayerSelectedForGame(player.id),
-                                canSelect: selectedCount < 6 || viewModel.isPlayerSelectedForGame(player.id),
-                                onUpdate: { updatedPlayer in
-                                    viewModel.updateSweepstakePlayer(updatedPlayer)
-                                },
-                                onToggleSelection: {
-                                    viewModel.togglePlayerSelection(player.id)
-                                },
-                                onDelete: {
-                                    viewModel.deleteMasterPlayer(player.id)
+                    .padding(.horizontal)
+                    .padding(.top, 16)
+                    
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 20) {
+                            // Current game selection
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("Current Game Selection")
+                                    .font(.headline)
+                                
+                                HStack {
+                                    Text("Selected for Game: \(selectedCount)/6")
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundColor(selectedCount == 6 ? .green : .orange)
+                                    
+                                    Spacer()
+                                    
+                                    Button {
+                                        showAddPlayer = true
+                                    } label: {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "plus.circle.fill")
+                                            Text("Add Player")
+                                        }
+                                        .font(.subheadline.weight(.semibold))
+                                    }
                                 }
-                            )
+                                
+                                Text("Select exactly 6 players for the current game. You can add or delete players from the master list below.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Divider()
+                            
+                            // All players list
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text("All Players")
+                                    .font(.headline)
+                                
+                                if viewModel.masterPlayerList.isEmpty {
+                                    Text("No players yet. Tap \"Add Player\" to create one.")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                } else {
+                                    VStack(spacing: 8) {
+                                        ForEach(viewModel.masterPlayerList) { player in
+                                            SweepstakePlayerRow(
+                                                player: player,
+                                                isSelected: viewModel.isPlayerSelectedForGame(player.id),
+                                                canSelect: selectedCount < 6 || viewModel.isPlayerSelectedForGame(player.id),
+                                                onUpdate: { updatedPlayer in
+                                                    viewModel.updateSweepstakePlayer(updatedPlayer)
+                                                },
+                                                onToggleSelection: {
+                                                    viewModel.togglePlayerSelection(player.id)
+                                                },
+                                                onDelete: {
+                                                    viewModel.deleteMasterPlayer(player.id)
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                                
+                                Text("Master list of all players. Changes persist between games.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
-                } header: {
-                    Text("All Players")
-                } footer: {
-                    Text("Master list of all players. Changes persist between games.")
+                    .padding(.horizontal)
+                    
+                    Spacer(minLength: 24)
                 }
+                .padding(.bottom, 24)
             }
-            .scrollContentBackground(.hidden)
         }
-        .navigationTitle("Sweepstake Players")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $showAddPlayer) {
             NavigationStack {
                 Form {

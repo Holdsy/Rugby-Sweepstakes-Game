@@ -10,6 +10,7 @@ import SwiftUI
 struct ScoreboardView: View {
     @EnvironmentObject var viewModel: GameViewModel
     @State private var showFinalResults = false
+    @Environment(\.dismiss) private var dismiss
     
     var sortedPlayers: [SweepstakePlayer] {
         viewModel.getSortedSweepstakePlayers()
@@ -23,25 +24,41 @@ struct ScoreboardView: View {
         ZStack {
             LiquidGlassBackground()
             
-            List {
-                ForEach(Array(sortedPlayers.enumerated()), id: \.element.id) { index, player in
-                    Section {
-                        ScoreboardPlayerRow(
-                            player: player,
-                            rank: index + 1,
-                            totalPoints: viewModel.getTotalPoints(for: player.id),
-                            isWinner: winners.contains { $0.id == player.id },
-                            viewModel: viewModel
-                        )
+            VStack(spacing: 16) {
+                GlassCard {
+                    HStack {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.title3.weight(.semibold))
+                        }
+                        .buttonStyle(.plain)
+                        
+                        Text("Scoreboard")
+                            .font(.title2.weight(.bold))
+                        
+                        Spacer()
                     }
                 }
+                
+                List {
+                    ForEach(Array(sortedPlayers.enumerated()), id: \.element.id) { index, player in
+                        Section {
+                            ScoreboardPlayerRow(
+                                player: player,
+                                rank: index + 1,
+                                totalPoints: viewModel.getTotalPoints(for: player.id),
+                                isWinner: winners.contains { $0.id == player.id },
+                                viewModel: viewModel
+                            )
+                        }
+                    }
+                }
+                .scrollContentBackground(.hidden)
             }
-            .scrollContentBackground(.hidden)
         }
-        .navigationTitle("Scoreboard")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar(.hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {

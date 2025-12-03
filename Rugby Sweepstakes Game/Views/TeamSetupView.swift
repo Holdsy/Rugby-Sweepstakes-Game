@@ -9,6 +9,7 @@ import SwiftUI
 
 struct TeamSetupView: View {
     @EnvironmentObject var viewModel: GameViewModel
+    @Environment(\.dismiss) private var dismiss
     @State private var showPhotoPicker = false
     @State private var selectedImage: UIImage?
     @State private var extractedPlayers: [ExtractedPlayer] = []
@@ -19,128 +20,141 @@ struct TeamSetupView: View {
     var body: some View {
         ZStack {
             LiquidGlassBackground()
-            
+
             ScrollView {
                 VStack(spacing: 20) {
+                    // Match HomeView title style
+                    HStack(spacing: 8) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.title3.weight(.semibold))
+                                .foregroundColor(.white)
+                        }
+                        .buttonStyle(.plain)
+                        
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Team Setup")
+                                .font(.largeTitle.weight(.bold))
+                                .foregroundStyle(.white)
+                            
+                            Text("Add starters and substitutes, then link them for in‑game substitutions.")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.9))
+                        }
+                        
+                        Spacer()
+                        
+                        Button {
+                            showPhotoPicker = true
+                        } label: {
+                            Image(systemName: "photo.on.rectangle")
+                                .font(.title2.weight(.semibold))
+                                .foregroundColor(.white)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Import team from photo")
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 16)
+                    
                     GlassCard {
-                        HStack(alignment: .top, spacing: 12) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("Team Setup")
-                                    .font(.title2.weight(.bold))
-                                Text("Add starters and substitutes, then link them for in‑game substitutions.")
-                                    .font(.footnote)
+                        VStack(alignment: .leading, spacing: 24) {
+                            // Starters section
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    Text("Starters")
+                                        .font(.headline)
+                                    Spacer()
+                                    Text("\(viewModel.game.starters.count)/15")
+                                        .font(.caption.weight(.semibold))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            Capsule()
+                                                .fill(viewModel.game.starters.count == 15 ? Color.green.opacity(0.18) : Color.orange.opacity(0.18))
+                                        )
+                                        .foregroundColor(viewModel.game.starters.count == 15 ? .green : .orange)
+                                }
+                                
+                                Text("Add exactly 15 starting players. Toggle to enable/disable players for the sweepstake.")
+                                    .font(.caption)
                                     .foregroundColor(.secondary)
+                                
+                                VStack(spacing: 8) {
+                                    ForEach(Array(viewModel.game.starters.enumerated()), id: \.element.id) { index, member in
+                                        TeamMemberRow(
+                                            member: member,
+                                            shirtNumber: index + 1, // 1-15 for starters
+                                            isStarter: true,
+                                            availableSubstitutes: viewModel.game.substitutes,
+                                            starters: viewModel.game.starters,
+                                            onUpdate: { updatedMember in
+                                                viewModel.updateTeamMember(updatedMember)
+                                            },
+                                            onToggleEnabled: {
+                                                viewModel.toggleEnabledForGame(member.id)
+                                            },
+                                            onLinkSubstitute: { substituteId in
+                                                viewModel.linkSubstitute(substituteId: substituteId, to: member.id)
+                                            },
+                                            onUnlinkSubstitute: {
+                                                viewModel.unlinkSubstitute(from: member.id)
+                                            }
+                                        )
+                                    }
+                                }
                             }
                             
-                            Spacer()
+                            Divider()
                             
-                            Button {
-                                showPhotoPicker = true
-                            } label: {
-                                Image(systemName: "photo.on.rectangle")
-                                    .font(.title3.weight(.semibold))
-                            }
-                            .buttonStyle(.borderless)
-                            .accessibilityLabel("Import team from photo")
-                        }
-                    }
-                    
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Text("Starters")
-                                    .font(.headline)
-                                Spacer()
-                                Text("\(viewModel.game.starters.count)/15")
-                                    .font(.caption.weight(.semibold))
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(
-                                        Capsule()
-                                            .fill(viewModel.game.starters.count == 15 ? Color.green.opacity(0.18) : Color.orange.opacity(0.18))
-                                    )
-                                    .foregroundColor(viewModel.game.starters.count == 15 ? .green : .orange)
-                            }
-                            
-                            Text("Add exactly 15 starting players. Toggle to enable/disable players for the sweepstake.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            
-                            VStack(spacing: 8) {
-                                ForEach(Array(viewModel.game.starters.enumerated()), id: \.element.id) { index, member in
-                                    TeamMemberRow(
-                                        member: member,
-                                        shirtNumber: index + 1, // 1-15 for starters
-                                        isStarter: true,
-                                        availableSubstitutes: viewModel.game.substitutes,
-                                        starters: viewModel.game.starters,
-                                        onUpdate: { updatedMember in
-                                            viewModel.updateTeamMember(updatedMember)
-                                        },
-                                        onToggleEnabled: {
-                                            viewModel.toggleEnabledForGame(member.id)
-                                        },
-                                        onLinkSubstitute: { substituteId in
-                                            viewModel.linkSubstitute(substituteId: substituteId, to: member.id)
-                                        },
-                                        onUnlinkSubstitute: {
-                                            viewModel.unlinkSubstitute(from: member.id)
-                                        }
-                                    )
+                            // Substitutes section
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    Text("Substitutes")
+                                        .font(.headline)
+                                    Spacer()
+                                    Text("\(viewModel.game.substitutes.count)/8")
+                                        .font(.caption.weight(.semibold))
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            Capsule()
+                                                .fill(viewModel.game.substitutes.count == 8 ? Color.green.opacity(0.18) : Color.orange.opacity(0.18))
+                                        )
+                                        .foregroundColor(viewModel.game.substitutes.count == 8 ? .green : .orange)
+                                }
+                                
+                                Text("Add exactly 8 substitutes. You can link substitutes to starters.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                VStack(spacing: 8) {
+                                    ForEach(Array(viewModel.game.substitutes.enumerated()), id: \.element.id) { index, member in
+                                        TeamMemberRow(
+                                            member: member,
+                                            shirtNumber: index + 16, // 16-23 for substitutes
+                                            isStarter: false,
+                                            availableSubstitutes: [],
+                                            starters: viewModel.game.starters,
+                                            onUpdate: { updatedMember in
+                                                viewModel.updateTeamMember(updatedMember)
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
+                    .padding(.horizontal)
                     
-                    GlassCard {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                Text("Substitutes")
-                                    .font(.headline)
-                                Spacer()
-                                Text("\(viewModel.game.substitutes.count)/8")
-                                    .font(.caption.weight(.semibold))
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(
-                                        Capsule()
-                                            .fill(viewModel.game.substitutes.count == 8 ? Color.green.opacity(0.18) : Color.orange.opacity(0.18))
-                                    )
-                                    .foregroundColor(viewModel.game.substitutes.count == 8 ? .green : .orange)
-                            }
-                            
-                            Text("Add exactly 8 substitutes. You can link substitutes to starters.")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            
-                            VStack(spacing: 8) {
-                                ForEach(Array(viewModel.game.substitutes.enumerated()), id: \.element.id) { index, member in
-                                    TeamMemberRow(
-                                        member: member,
-                                        shirtNumber: index + 16, // 16-23 for substitutes
-                                        isStarter: false,
-                                        availableSubstitutes: [],
-                                        starters: viewModel.game.starters,
-                                        onUpdate: { updatedMember in
-                                            viewModel.updateTeamMember(updatedMember)
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    
-                    Spacer(minLength: 16)
+                    Spacer(minLength: 24)
                 }
-                .padding(.horizontal)
-                .padding(.top, 12)
                 .padding(.bottom, 24)
             }
         }
-        .navigationTitle("Team Setup")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar(.hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {

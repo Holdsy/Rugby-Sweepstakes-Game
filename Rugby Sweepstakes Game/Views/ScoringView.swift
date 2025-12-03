@@ -9,50 +9,83 @@ import SwiftUI
 
 struct ScoringView: View {
     @EnvironmentObject var viewModel: GameViewModel
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
         ZStack {
             LiquidGlassBackground()
             
-            List {
-                ForEach(viewModel.game.enabledStarters) { starter in
-                    ScoringRow(
-                        starter: starter,
-                        linkedSubstitute: viewModel.getLinkedSubstitute(for: starter.id),
-                        availableSubstitutes: viewModel.game.substitutes,
-                        starters: viewModel.game.starters,
-                        onAddTry: {
-                            viewModel.addTry(to: starter.id)
-                        },
-                        onAddPenalty: {
-                            viewModel.addPenalty(to: starter.id)
-                        },
-                        onAddConversion: {
-                            viewModel.addConversion(to: starter.id)
-                        },
-                        onLinkSubstitute: { substituteId in
-                            viewModel.linkSubstitute(substituteId: substituteId, to: starter.id)
-                        },
-                        onUnlinkSubstitute: {
-                            viewModel.unlinkSubstitute(from: starter.id)
-                        },
-                        totalPoints: viewModel.getTotalPointsForTeamMember(starter.id)
-                    )
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Header matching HomeView style
+                    HStack(spacing: 8) {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.title3.weight(.semibold))
+                                .foregroundColor(.white)
+                        }
+                        .buttonStyle(.plain)
+                        
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Scoring")
+                                .font(.largeTitle.weight(.bold))
+                                .foregroundStyle(.white)
+                            
+                            Text("Track points for each starter and their substitutes.")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.9))
+                        }
+                        
+                        Spacer()
+                        
+                        NavigationLink(destination: ScoreboardView()) {
+                            Image(systemName: "trophy.fill")
+                                .font(.title3.weight(.semibold))
+                                .foregroundColor(.white)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 16)
+                    
+                    // One glass card per starter
+                    VStack(spacing: 16) {
+                        ForEach(viewModel.game.enabledStarters) { starter in
+                            GlassCard {
+                                ScoringRow(
+                                    starter: starter,
+                                    linkedSubstitute: viewModel.getLinkedSubstitute(for: starter.id),
+                                    availableSubstitutes: viewModel.game.substitutes,
+                                    starters: viewModel.game.starters,
+                                    onAddTry: {
+                                        viewModel.addTry(to: starter.id)
+                                    },
+                                    onAddPenalty: {
+                                        viewModel.addPenalty(to: starter.id)
+                                    },
+                                    onAddConversion: {
+                                        viewModel.addConversion(to: starter.id)
+                                    },
+                                    onLinkSubstitute: { substituteId in
+                                        viewModel.linkSubstitute(substituteId: substituteId, to: starter.id)
+                                    },
+                                    onUnlinkSubstitute: {
+                                        viewModel.unlinkSubstitute(from: starter.id)
+                                    },
+                                    totalPoints: viewModel.getTotalPointsForTeamMember(starter.id)
+                                )
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    Spacer(minLength: 24)
                 }
-            }
-            .scrollContentBackground(.hidden)
-        }
-        .navigationTitle("Scoring")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                NavigationLink(destination: ScoreboardView()) {
-                    Image(systemName: "trophy.fill")
-                }
+                .padding(.bottom, 24)
             }
         }
+        .toolbar(.hidden, for: .navigationBar)
     }
 }
 

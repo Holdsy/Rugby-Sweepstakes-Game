@@ -189,15 +189,7 @@ struct HomeView: View {
                     }
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .principal) {
-                    Text("Rugby Sweepstake")
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(.white)
-                }
-            }
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
 }

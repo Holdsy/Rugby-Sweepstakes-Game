@@ -9,6 +9,7 @@ import SwiftUI
 
 struct DrawView: View {
     @EnvironmentObject var viewModel: GameViewModel
+    @Environment(\.dismiss) private var dismiss
     @State private var isRunningDraw = false
     @State private var showResults = false
     
@@ -18,6 +19,24 @@ struct DrawView: View {
             
             ScrollView {
                 VStack(spacing: 30) {
+                    GlassCard {
+                        HStack {
+                            Button {
+                                dismiss()
+                            } label: {
+                                Image(systemName: "chevron.left")
+                                    .font(.title3.weight(.semibold))
+                            }
+                            .buttonStyle(.plain)
+                            
+                            Text("Draw")
+                                .font(.title2.weight(.bold))
+                            
+                            Spacer()
+                        }
+                    }
+                    .padding(.top, 8)
+                    
                     if viewModel.game.isDrawComplete {
                         GlassCard {
                             VStack(spacing: 16) {
@@ -127,10 +146,7 @@ struct DrawView: View {
                 }
             }
         }
-        .navigationTitle("Draw")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
+        .toolbar(.hidden, for: .navigationBar)
     }
     
     private func runDraw() {
