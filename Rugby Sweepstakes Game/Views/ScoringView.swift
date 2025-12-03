@@ -16,6 +16,7 @@ struct ScoringView: View {
                 ScoringRow(
                     starter: starter,
                     linkedSubstitute: viewModel.getLinkedSubstitute(for: starter.id),
+                    availableSubstitutes: viewModel.game.substitutes,
                     onAddTry: {
                         viewModel.addTry(to: starter.id)
                     },
@@ -24,6 +25,12 @@ struct ScoringView: View {
                     },
                     onAddConversion: {
                         viewModel.addConversion(to: starter.id)
+                    },
+                    onLinkSubstitute: { substituteId in
+                        viewModel.linkSubstitute(substituteId: substituteId, to: starter.id)
+                    },
+                    onUnlinkSubstitute: {
+                        viewModel.unlinkSubstitute(from: starter.id)
                     },
                     totalPoints: viewModel.getTotalPointsForTeamMember(starter.id)
                 )
@@ -44,38 +51,68 @@ struct ScoringView: View {
 struct ScoringRow: View {
     let starter: TeamMember
     let linkedSubstitute: TeamMember?
+    let availableSubstitutes: [TeamMember]
     let onAddTry: () -> Void
     let onAddPenalty: () -> Void
     let onAddConversion: () -> Void
+    let onLinkSubstitute: (UUID) -> Void
+    let onUnlinkSubstitute: () -> Void
     let totalPoints: Int
+    
+    @State private var showSubstitutePicker = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(starter.name)
-                        .font(.headline)
-                    
-                    if let position = starter.position {
-                        Text(position)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+            Button {
+                showSubstitutePicker = true
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text(starter.name)
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            
+                            Image(systemName: "person.badge.plus")
+                                .font(.caption)
+                                .foregroundColor(.blue)
+                        }
+                        
+                        if let position = starter.position {
+                            Text(position)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        if let substitute = linkedSubstitute {
+                            HStack(spacing: 4) {
+                                Image(systemName: "arrow.2.squarepath")
+                                    .font(.caption2)
+                                Text("\(substitute.name) on")
+                                    .font(.caption)
+                                    .foregroundColor(.blue)
+                            }
+                        } else {
+                            HStack(spacing: 4) {
+                                Image(systemName: "hand.tap")
+                                    .font(.caption2)
+                                Text("Tap to assign substitute")
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
                     }
                     
-                    if let substitute = linkedSubstitute {
-                        Text("(\(substitute.name) on)")
-                            .font(.caption)
-                            .foregroundColor(.blue)
-                    }
+                    Spacer()
+                    
+                    Text("\(totalPoints) pts")
+                        .font(.title2)
+                        .fontWeight(.bold)
+                        .foregroundColor(.blue)
                 }
-                
-                Spacer()
-                
-                Text("\(totalPoints) pts")
-                    .font(.title2)
-                    .fontWeight(.bold)
-                    .foregroundColor(.blue)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
             
             Divider()
             
@@ -134,6 +171,20 @@ struct ScoringRow: View {
             .buttonStyle(.plain)
         }
         .padding(.vertical, 8)
+        .sheet(isPresented: $showSubstitutePicker) {
+            SubstitutePickerView(
+                substitutes: availableSubstitutes,
+                currentLinkedSubstituteId: starter.linkedSubstituteId,
+                onSelect: { substituteId in
+                    onLinkSubstitute(substituteId)
+                    showSubstitutePicker = false
+                },
+                onUnlink: {
+                    onUnlinkSubstitute()
+                    showSubstitutePicker = false
+                }
+            )
+        }
     }
 }
 

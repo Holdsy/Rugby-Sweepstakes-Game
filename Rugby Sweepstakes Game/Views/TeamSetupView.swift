@@ -165,21 +165,50 @@ struct TeamMemberRow: View {
 
 struct SubstitutePickerView: View {
     let substitutes: [TeamMember]
+    var currentLinkedSubstituteId: UUID? = nil
     let onSelect: (UUID) -> Void
+    var onUnlink: (() -> Void)? = nil
     
     var body: some View {
         NavigationStack {
-            List(substitutes) { substitute in
-                Button {
-                    onSelect(substitute.id)
-                } label: {
-                    VStack(alignment: .leading) {
-                        Text(substitute.name.isEmpty ? "Unnamed Substitute" : substitute.name)
-                            .foregroundColor(.primary)
-                        if let position = substitute.position {
-                            Text(position)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+            List {
+                if let currentLinkedSubstituteId = currentLinkedSubstituteId,
+                   onUnlink != nil {
+                    Section {
+                        Button(role: .destructive) {
+                            onUnlink?()
+                        } label: {
+                            HStack {
+                                Image(systemName: "xmark.circle.fill")
+                                Text("Unlink Current Substitute")
+                            }
+                        }
+                    }
+                }
+                
+                Section {
+                    ForEach(substitutes) { substitute in
+                        Button {
+                            onSelect(substitute.id)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(substitute.name.isEmpty ? "Unnamed Substitute" : substitute.name)
+                                        .foregroundColor(.primary)
+                                    if let position = substitute.position {
+                                        Text(position)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                
+                                Spacer()
+                                
+                                if substitute.id == currentLinkedSubstituteId {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.blue)
+                                }
+                            }
                         }
                     }
                 }
