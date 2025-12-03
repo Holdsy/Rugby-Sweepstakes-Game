@@ -9,9 +9,12 @@ import SwiftUI
 
 @main
 struct Rugby_Sweepstakes_GameApp: App {
+    @StateObject private var gameViewModel = GameViewModel()
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            HomeView()
+                .environmentObject(gameViewModel)
         }
     }
 }
