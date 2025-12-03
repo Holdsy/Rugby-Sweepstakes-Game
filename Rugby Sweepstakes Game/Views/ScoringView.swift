@@ -10,6 +10,33 @@ import SwiftUI
 struct ScoringView: View {
     @EnvironmentObject var viewModel: GameViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var showShareSheet = false
+    
+    var shareText: String {
+        var text = "🏉 Rugby Sweepstakes - Current Scoring\n\n"
+        
+        let sortedStarters = viewModel.game.enabledStarters.sorted { starter1, starter2 in
+            viewModel.getTotalPointsForTeamMember(starter1.id) > viewModel.getTotalPointsForTeamMember(starter2.id)
+        }
+        
+        for starter in sortedStarters {
+            let points = viewModel.getTotalPointsForTeamMember(starter.id)
+            let linkedSubstitute = viewModel.getLinkedSubstitute(for: starter.id)
+            
+            text += "\(starter.name)"
+            if let position = starter.position {
+                text += " (\(position))"
+            }
+            
+            if let substitute = linkedSubstitute {
+                text += " + \(substitute.name)"
+            }
+            
+            text += ": \(points) pts\n"
+        }
+        
+        return text
+    }
     
     var body: some View {
         ZStack {
@@ -40,10 +67,20 @@ struct ScoringView: View {
                         
                         Spacer()
                         
-                        NavigationLink(destination: ScoreboardView()) {
-                            Image(systemName: "trophy.fill")
-                                .font(.title3.weight(.semibold))
-                                .foregroundColor(.white)
+                        HStack(spacing: 16) {
+                            Button {
+                                showShareSheet = true
+                            } label: {
+                                Image(systemName: "square.and.arrow.up")
+                                    .font(.title3.weight(.semibold))
+                                    .foregroundColor(.white)
+                            }
+                            
+                            NavigationLink(destination: ScoreboardView()) {
+                                Image(systemName: "trophy.fill")
+                                    .font(.title3.weight(.semibold))
+                                    .foregroundColor(.white)
+                            }
                         }
                     }
                     .padding(.horizontal)
@@ -86,6 +123,9 @@ struct ScoringView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: $showShareSheet) {
+            ShareSheet(activityItems: [shareText])
+        }
     }
 }
 

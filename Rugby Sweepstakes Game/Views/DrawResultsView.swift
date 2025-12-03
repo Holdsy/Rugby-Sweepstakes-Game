@@ -10,6 +10,38 @@ import SwiftUI
 struct DrawResultsView: View {
     @EnvironmentObject var viewModel: GameViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var isSharing = false
+    
+    // Build a simple text summary of the draw that can be shared
+    private var shareText: String {
+        var lines: [String] = []
+        lines.append("Rugby Sweepstakes – Draw Results")
+        lines.append("")
+        
+        for player in viewModel.game.sweepstakePlayers {
+            lines.append("\(player.name):")
+            let rounds = getRoundsForPlayer(player)
+            
+            if rounds.isEmpty {
+                lines.append("  No team members assigned")
+            } else {
+                for round in rounds.keys.sorted() {
+                    lines.append("  Round \(round):")
+                    for member in rounds[round] ?? [] {
+                        if let linkedSubstitute = viewModel.getLinkedSubstitute(for: member.id) {
+                            lines.append("    • \(member.displayName(linkedSubstitute: linkedSubstitute))")
+                        } else {
+                            let extra = member.position.map { " (\($0))" } ?? ""
+                            lines.append("    • \(member.name)\(extra)")
+                        }
+                    }
+                }
+            }
+            lines.append("")
+        }
+        
+        return lines.joined(separator: "\n")
+    }
     
     var body: some View {
         ZStack {
@@ -39,6 +71,14 @@ struct DrawResultsView: View {
                         }
                         
                         Spacer()
+                        
+                        Button {
+                            isSharing = true
+                        } label: {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.title3.weight(.semibold))
+                                .foregroundColor(.white)
+                        }
                     }
                     .padding(.horizontal)
                     .padding(.top, 16)
@@ -107,6 +147,9 @@ struct DrawResultsView: View {
                     Text("Start Scoring")
                 }
             }
+        }
+        .sheet(isPresented: $isSharing) {
+            ShareSheet(activityItems: [shareText])
         }
     }
     

@@ -10,6 +10,7 @@ import SwiftUI
 struct ScoreboardView: View {
     @EnvironmentObject var viewModel: GameViewModel
     @State private var showFinalResults = false
+    @State private var showShareSheet = false
     @Environment(\.dismiss) private var dismiss
     
     var sortedPlayers: [SweepstakePlayer] {
@@ -18,6 +19,49 @@ struct ScoreboardView: View {
     
     var winners: [SweepstakePlayer] {
         viewModel.getWinners()
+    }
+    
+    var shareText: String {
+        var text = "🏆 Rugby Sweepstakes - Final Scoreboard\n\n"
+        
+        if winners.count == 1 {
+            text += "🏆 Winner: \(winners[0].name) - \(viewModel.getTotalPoints(for: winners[0].id)) points\n\n"
+        } else if winners.count > 1 {
+            text += "🏆 Tied Winners:\n"
+            for winner in winners {
+                text += "• \(winner.name) - \(viewModel.getTotalPoints(for: winner.id)) points\n"
+            }
+            text += "\n"
+        }
+        
+        text += "Final Standings:\n"
+        for (index, player) in sortedPlayers.enumerated() {
+            let rank = index + 1
+            let points = viewModel.getTotalPoints(for: player.id)
+            text += "\(rank). \(player.name): \(points) pts\n"
+        }
+        
+        text += "\nDetailed Breakdown:\n"
+        for player in sortedPlayers {
+            let points = viewModel.getTotalPoints(for: player.id)
+            text += "\n\(player.name) (\(points) pts):\n"
+            
+            for teamMemberId in player.assignedTeamMemberIds {
+                if let member = viewModel.getTeamMember(by: teamMemberId) {
+                    let linkedSubstitute = viewModel.getLinkedSubstitute(for: member.id)
+                    let memberPoints = viewModel.getTotalPointsForTeamMember(member.id)
+                    
+                    if let substitute = linkedSubstitute {
+                        text += "  • \(member.displayName(linkedSubstitute: substitute)): \(memberPoints) pts\n"
+                    } else {
+                        let positionText = member.position.map { " - \($0)" } ?? ""
+                        text += "  • \(member.name)\(positionText): \(memberPoints) pts\n"
+                    }
+                }
+            }
+        }
+        
+        return text
     }
     
     var body: some View {
@@ -39,6 +83,14 @@ struct ScoreboardView: View {
                             .font(.title2.weight(.bold))
                         
                         Spacer()
+                        
+                        Button {
+                            showShareSheet = true
+                        } label: {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.title3.weight(.semibold))
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
                 
@@ -71,6 +123,9 @@ struct ScoreboardView: View {
         .sheet(isPresented: $showFinalResults) {
             FinalResultsView()
                 .environmentObject(viewModel)
+        }
+        .sheet(isPresented: $showShareSheet) {
+            ShareSheet(activityItems: [shareText])
         }
     }
 }
