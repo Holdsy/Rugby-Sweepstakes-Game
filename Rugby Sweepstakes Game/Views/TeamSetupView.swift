@@ -277,6 +277,8 @@ struct TeamMemberRow: View {
                 Text("#\(shirtNumber)")
                     .font(.headline)
                     .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
                     .frame(width: 35, alignment: .leading)
                 
                 TextField("Name", text: $name)
@@ -395,7 +397,9 @@ struct SubstitutePickerView: View {
                                 HStack {
                                     Text("#\(shirtNumber)")
                                         .font(.headline)
-                                        .foregroundColor(.secondary)
+                                            .foregroundColor(.secondary)
+                                            .lineLimit(1)
+                                            .fixedSize(horizontal: true, vertical: false)
                                     Text(substitute.name.isEmpty ? "Unnamed Substitute" : substitute.name)
                                         .foregroundColor(.primary)
                                     
