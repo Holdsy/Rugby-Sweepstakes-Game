@@ -63,6 +63,27 @@ struct DrawView: View {
                                         .foregroundColor(.white)
                                         .cornerRadius(10)
                                 }
+                                
+                                Button {
+                                    runDraw()
+                                } label: {
+                                    if isRunningDraw {
+                                        ProgressView()
+                                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                            .frame(maxWidth: .infinity)
+                                            .padding()
+                                            .background(Color.blue)
+                                            .cornerRadius(10)
+                                    } else {
+                                        Label("Run Draw Again", systemImage: "arrow.clockwise.circle")
+                                            .frame(maxWidth: .infinity)
+                                            .padding()
+                                            .background(viewModel.game.canRunDraw ? Color.blue : Color.gray)
+                                            .foregroundColor(.white)
+                                            .cornerRadius(10)
+                                    }
+                                }
+                                .disabled(!viewModel.game.canRunDraw || isRunningDraw)
                             }
                         }
                         .frame(maxWidth: .infinity)
@@ -79,7 +100,7 @@ struct DrawView: View {
                                     .font(.title)
                                     .fontWeight(.bold)
                                 
-                                Text("Ready to allocate \(viewModel.game.enabledStarters.count) enabled team members to 6 sweepstake players")
+                                Text("Ready to allocate \(viewModel.game.enabledStarters.count) enabled team members to \(viewModel.game.sweepstakePlayers.count) sweepstake players")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
@@ -103,8 +124,8 @@ struct DrawView: View {
                                                 Label("Need at least 1 enabled starter", systemImage: "xmark.circle.fill")
                                                     .foregroundColor(.red)
                                             }
-                                            if viewModel.game.sweepstakePlayers.count != 6 {
-                                                Label("Need exactly 6 sweepstake players", systemImage: "xmark.circle.fill")
+                                            if viewModel.game.sweepstakePlayers.count < 2 {
+                                                Label("Need at least 2 sweepstake players", systemImage: "xmark.circle.fill")
                                                     .foregroundColor(.red)
                                             }
                                         }

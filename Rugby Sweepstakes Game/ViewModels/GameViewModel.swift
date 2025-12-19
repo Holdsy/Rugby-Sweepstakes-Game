@@ -49,7 +49,8 @@ class GameViewModel: ObservableObject {
     // MARK: - Initialization
     
     private func initializeDefaultGame() {
-        // Initialize with first 6 players from master list (or all if less than 6)
+        // Initialize with the first 6 players from the master list (or all if less than 6)
+        // This is just a sensible default; the game now supports any number of players ≥ 2.
         game.sweepstakePlayers = Array(masterPlayerList.prefix(6))
         syncSelectedPlayersWithMaster()
         
@@ -291,21 +292,16 @@ class GameViewModel: ObservableObject {
         if isPlayerSelectedForGame(playerId) {
             // Deselect - remove from game
             game.sweepstakePlayers.removeAll { $0.id == playerId }
-        } else {
-            // Select - add to game (only if less than 6)
-            if game.sweepstakePlayers.count < 6 {
-                if let player = masterPlayerList.first(where: { $0.id == playerId }) {
-                    // Create a fresh copy without game-specific data
-                    let newPlayer = SweepstakePlayer(
-                        id: player.id,
-                        name: player.name,
-                        color: player.color,
-                        assignedTeamMemberIds: [],
-                        drawRounds: []
-                    )
-                    game.sweepstakePlayers.append(newPlayer)
-                }
-            }
+        } else if let player = masterPlayerList.first(where: { $0.id == playerId }) {
+            // Select - add to game (no upper limit; draw logic now only requires a minimum count)
+            let newPlayer = SweepstakePlayer(
+                id: player.id,
+                name: player.name,
+                color: player.color,
+                assignedTeamMemberIds: [],
+                drawRounds: []
+            )
+            game.sweepstakePlayers.append(newPlayer)
         }
         saveGame()
     }
@@ -328,9 +324,10 @@ class GameViewModel: ObservableObject {
     // MARK: - Draw Logic
     
     func runFullDraw() {
-        guard game.canRunDraw && !game.isDrawComplete else { return }
+        // Only require that the game is in a valid state; always allow re-running.
+        guard game.canRunDraw else { return }
         
-        // Reset previous draw if any
+        // Reset previous draw (if any) so each run starts fresh
         for i in game.sweepstakePlayers.indices {
             game.sweepstakePlayers[i].assignedTeamMemberIds = []
             game.sweepstakePlayers[i].drawRounds = []
