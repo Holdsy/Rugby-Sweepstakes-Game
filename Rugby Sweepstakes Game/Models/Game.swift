@@ -11,7 +11,7 @@ struct Game: Identifiable, Codable {
     let id: UUID
     var name: String?
     var teamMembers: [TeamMember] // Exactly 23: 15 starters + 8 substitutes
-    var sweepstakePlayers: [SweepstakePlayer] // Default 6 players
+    var sweepstakePlayers: [SweepstakePlayer] // Default 6 players (supports any number ≥ 2)
     var isDrawComplete: Bool
     
     init(
@@ -46,7 +46,7 @@ struct Game: Identifiable, Codable {
         starters.count == 15 &&
         substitutes.count == 8 &&
         enabledStarters.count > 0 &&
-        sweepstakePlayers.count == 6 &&
+        sweepstakePlayers.count >= 2 &&
         sweepstakePlayers.allSatisfy { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
     }
     
@@ -55,4 +55,6 @@ struct Game: Identifiable, Codable {
         starters.count == 15 && substitutes.count == 8
     }
 }
+
+
 

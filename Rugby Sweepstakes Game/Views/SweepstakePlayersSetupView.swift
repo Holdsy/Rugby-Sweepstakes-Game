@@ -39,7 +39,7 @@ struct SweepstakePlayersSetupView: View {
                                 .font(.largeTitle.weight(.bold))
                                 .foregroundStyle(.white)
                             
-                            Text("Manage the master list and choose 6 players for this game.")
+                            Text("Manage the master list and choose at least 2 players for this game.")
                                 .font(.subheadline)
                                 .foregroundColor(.white.opacity(0.9))
                         }
@@ -57,9 +57,9 @@ struct SweepstakePlayersSetupView: View {
                                     .font(.headline)
                                 
                                 HStack {
-                                    Text("Selected for Game: \(selectedCount)/6")
+                                    Text("Selected for Game: \(selectedCount)")
                                         .font(.subheadline.weight(.semibold))
-                                        .foregroundColor(selectedCount == 6 ? .green : .orange)
+                                        .foregroundColor(selectedCount >= 2 ? .green : .orange)
                                     
                                     Spacer()
                                     
@@ -74,7 +74,7 @@ struct SweepstakePlayersSetupView: View {
                                     }
                                 }
                                 
-                                Text("Select exactly 6 players for the current game. You can add or delete players from the master list below.")
+                                Text("Select at least 2 players for the current game. You can add or delete players from the master list below.")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -96,7 +96,7 @@ struct SweepstakePlayersSetupView: View {
                                             SweepstakePlayerRow(
                                                 player: player,
                                                 isSelected: viewModel.isPlayerSelectedForGame(player.id),
-                                                canSelect: selectedCount < 6 || viewModel.isPlayerSelectedForGame(player.id),
+                                                canSelect: true,
                                                 onUpdate: { updatedPlayer in
                                                     viewModel.updateSweepstakePlayer(updatedPlayer)
                                                 },
