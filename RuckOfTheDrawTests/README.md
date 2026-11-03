@@ -16,6 +16,7 @@ The suite tests the app's actual compiled production code using `@testable impor
 
 Coverage includes:
 
+- Saved people and game selection survive relaunch independently, including a seventh participant; draw locks, the 15-person selection limit and save-failure rollback.
 - Draw validation, equal allocation and duplicate prevention for 2, 6 and 15 participants.
 - All scoring types, older-score corrections, persisted totals, substitution chains, field-slot order and each replacement's allocation-specific leaderboard points.
 - Completion locks, immutable historical names, save-failure rollback, reopening and migration/corrupt-data preservation.

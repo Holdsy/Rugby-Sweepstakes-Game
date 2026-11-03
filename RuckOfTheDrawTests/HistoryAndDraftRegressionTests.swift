@@ -170,6 +170,53 @@ import XCTest
         XCTAssertNil(legacy.teamAmendments)
     }
 
+    func testSeventhSavedPersonAndGameSelectionSurviveRelaunchIndependently() {
+        let (model, defaults) = makeGame(draw: false)
+        let id = model.addMasterPlayer(name: "Seventh Person")
+        XCTAssertEqual(model.masterPlayerList.count, 7)
+        XCTAssertFalse(model.isPlayerSelectedForGame(id))
+        model.togglePlayerSelection(id)
+        let loaded = GameViewModel(persistenceService: GamePersistenceService(defaults: defaults))
+        XCTAssertEqual(loaded.masterPlayerList.count, 7)
+        XCTAssertTrue(loaded.isPlayerSelectedForGame(id))
+        loaded.togglePlayerSelection(id)
+        let again = GameViewModel(persistenceService: GamePersistenceService(defaults: defaults))
+        XCTAssertEqual(again.masterPlayerList.count, 7)
+        XCTAssertFalse(again.isPlayerSelectedForGame(id))
+        XCTAssertEqual(again.game.sweepstakePlayers.count, 6)
+    }
+    func testSavedPeopleCanBeAddedAfterDrawWithoutChangingAllocation() {
+        let (model, defaults) = makeGame()
+        let allocations = model.game.sweepstakePlayers.map(\.assignedTeamMemberIds)
+        let id = model.addMasterPlayer(name: "Next Game Person")
+        model.togglePlayerSelection(id)
+        XCTAssertFalse(model.isPlayerSelectedForGame(id))
+        XCTAssertEqual(model.game.sweepstakePlayers.map(\.assignedTeamMemberIds), allocations)
+        XCTAssertTrue(GameViewModel(persistenceService: GamePersistenceService(defaults: defaults)).masterPlayerList.contains { $0.id == id })
+    }
+    func testGameSelectionLimitDoesNotLimitSavedPeople() {
+        let (model, _) = makeGame(people: 15, draw: false)
+        let id = model.addMasterPlayer(name: "Sixteenth Person")
+        model.togglePlayerSelection(id)
+        XCTAssertEqual(model.masterPlayerList.count, 16)
+        XCTAssertFalse(model.isPlayerSelectedForGame(id))
+        model.togglePlayerSelection(model.game.sweepstakePlayers[0].id)
+        model.togglePlayerSelection(id)
+        XCTAssertTrue(model.isPlayerSelectedForGame(id))
+        XCTAssertEqual(model.game.sweepstakePlayers.count, 15)
+    }
+    func testFailedSelectionSaveRollsBackSwitchState() throws {
+        let (model, _) = makeGame(draw: false); let (defaults, _) = isolatedDefaults()
+        let persistence = FailingPersistence(defaults: defaults)
+        persistence.saveMasterPlayerList(model.masterPlayerList)
+        try persistence.saveState(game: model.game, savedGames: [])
+        let other = GameViewModel(persistenceService: persistence)
+        let id = other.game.sweepstakePlayers[0].id
+        persistence.fail = true; other.togglePlayerSelection(id)
+        XCTAssertTrue(other.isPlayerSelectedForGame(id))
+        XCTAssertNotNil(other.persistenceError)
+    }
+
 }
 private final class FailingPersistence: GamePersistenceService {
     var fail = false

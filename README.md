@@ -9,7 +9,7 @@ Previously named **Rugby Sweepstakes Game**. The Xcode project, repository and b
 ## How a game works
 
 1. **Match & Team** — choose a live fixture or set up manually, then finalise the 15 starters and eight replacements. Import an available lineup, read a team-sheet photo, or type names yourself.
-2. **Participants** — select saved people or add new participants.
+2. **Participants** — turn on Playing this game for the saved people taking part, or save and add someone new.
 3. **Review & Draw** — check the team and exclusions, then run the random draw. Every participant receives the same number of starting players.
 4. **Match Day** — record scores and substitutions, follow the leaderboard, and refresh the separate live match scoreboard.
 5. **Finish & Share** — complete the game, save the results and share an image through WhatsApp or another app.
@@ -30,9 +30,11 @@ Screenshots use sample participants and show the teal-and-gold design in build 1
 | --- | --- | --- |
 | <img src="docs/screenshots/match-day.png" width="240" alt="Match Day scoring and substitution controls"> | <img src="docs/screenshots/share-draw.png" width="240" alt="Draw image with player portraits"> | <img src="docs/screenshots/share-results.png" width="240" alt="Final results image with winner and standings"> |
 
+<img src="docs/screenshots/people-selection.png" width="240" alt="Choose who is playing using saved participant switches">
+
 ## Main features
 
-- Guided setup, reusable participants and equal random allocations.
+- Guided setup, a reusable People list with Playing this game switches, and equal random allocations.
 - Unfinished team drafts with resume, delete and discard options.
 - Tries, conversions, penalties and drop goals, with scoring history and corrections.
 - Late match-day team amendments that preserve allocations, with an audit trail.
@@ -59,7 +61,7 @@ Player photos can come from the saved England/Ireland catalogues, additional sup
 
 Open `Rugby Sweepstakes Game.xcodeproj`, select the **Ruck of the Draw** scheme and choose an iPhone simulator. For a physical device, select your own development team under Signing & Capabilities. The existing bundle ID is `com.MarkHoldsworth.Rugby-Sweepstakes-Game`.
 
-Current TestFlight build: **1.1 (4)**, uploaded on 3 November 2026. See [release notes](docs/RELEASE_NOTES.md) for changes and a suggested device test checklist.
+Current TestFlight build: **1.1 (5)**, uploaded on 3 November 2026. See [release notes](docs/RELEASE_NOTES.md) for changes and a suggested device test checklist.
 
 ## Regression tests
 
@@ -69,7 +71,7 @@ Current TestFlight build: **1.1 (4)**, uploaded on 3 November 2026. See [release
 
 Or select **Ruck of the Draw Regression** in Xcode and use **Product → Test**. The script uses a dedicated simulator and writes logs and an `.xcresult` bundle to the ignored `.test-results/` folder.
 
-The latest validation passed **48 tests**, with zero failures, for build 1.1 (4). Coverage includes draws, scoring, replacement chains, history, drafts, backups, mocked network responses, photo matching, half-time sharing, allocation-preserving team amendments and share-image rendering. See [test documentation](RuckOfTheDrawTests/README.md) for setup, destination overrides and physical-device checks.
+The latest validation passed **52 tests**, with zero failures, for build 1.1 (5). Coverage includes draws, scoring, replacement chains, history, drafts, backups, mocked network responses, photo matching, half-time sharing, allocation-preserving team amendments and share-image rendering. See [test documentation](RuckOfTheDrawTests/README.md) for setup, destination overrides and physical-device checks.
 
 ## Project layout
 

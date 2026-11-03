@@ -1,5 +1,30 @@
 # Release notes
 
+## 1.1 (5) — 3 November 2026
+
+### Changes
+
+- The People tab is a reusable list with a Playing this game switch for each person, plus saved and selected counts.
+- Add Person explicitly offers Save Person or Save & Add to Game. The same form is used in People and game setup.
+- Saved people remain available when switched off. Participant selection stays locked after the draw, while new people can still be saved for future games.
+- Games allow up to 15 selected participants; the saved People list can contain more. A failed selection save restores the previous switch state and reports the error.
+- Updated instructions for adding a seventh person and balancing a seven-person draw with 14 starters.
+
+### Validation
+
+- 52 regression tests passed; zero failures or skips.
+- Signed Release archive verified and uploaded successfully to App Store Connect as version 1.1, build 5.
+- Simulator verification confirmed that a seventh person stays saved and selected after relaunch.
+
+### Suggested TestFlight checks
+
+1. Update from build 4 and confirm your saved people and current game remain available.
+2. Before drawing, open People and add a seventh person using Save & Add to Game.
+3. Turn that person off and confirm they remain in the saved list, then turn them back on.
+4. Close and reopen the app; confirm the name and selection remain saved.
+5. For seven participants, include 14 starters so everyone receives two players.
+6. After drawing, verify switches are locked and a new person can still be saved for the next game.
+
 ## 1.1 (4) — 3 November 2026
 
 ### Changes

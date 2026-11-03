@@ -437,12 +437,13 @@ class GameViewModel: ObservableObject {
     }
     
     func togglePlayerSelection(_ playerId: UUID) {
-        guard !game.isDrawComplete else { return }
+        guard !game.isDrawComplete, !storageWritesBlocked else { return }
+        let previousGame = game
         if isPlayerSelectedForGame(playerId) {
             // Deselect - remove from game
             game.sweepstakePlayers.removeAll { $0.id == playerId }
-        } else if let player = masterPlayerList.first(where: { $0.id == playerId }) {
-            // Select - add to game (no upper limit; draw logic now only requires a minimum count)
+        } else if game.sweepstakePlayers.count < 15, let player = masterPlayerList.first(where: { $0.id == playerId }) {
+            // Saved people are independent of this game's selected participants.
             let newPlayer = SweepstakePlayer(
                 id: player.id,
                 name: player.name,
@@ -452,7 +453,7 @@ class GameViewModel: ObservableObject {
             )
             game.sweepstakePlayers.append(newPlayer)
         }
-        saveGame()
+        if !saveGame() { game = previousGame }
     }
     
     private func syncSelectedPlayersWithMaster() {

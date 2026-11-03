@@ -11,7 +11,6 @@ struct GameSetupView: View {
     @State private var selectedDraft: TeamLineupDraft?
     @State private var showDrafts = false
     @State private var showAddParticipant = false
-    @State private var newParticipantName = ""
     @State private var showExclusions = false
     init(initialStep: Int) { _step = State(initialValue: min(max(initialStep, 0), 2)) }
     private let titles = ["Match & Team", "Participants", "Review & Draw"]
@@ -85,17 +84,7 @@ struct GameSetupView: View {
             .sheet(isPresented: $showTeamEditor) {
                 CurrentTeamReviewView().environmentObject(viewModel)
             }
-            .alert("Add Participant", isPresented: $showAddParticipant) {
-                TextField("Name", text: $newParticipantName)
-                Button("Cancel", role: .cancel) { newParticipantName = "" }
-                Button("Add to Game") {
-                    let name = newParticipantName.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !name.isEmpty else { return }
-                    let id = viewModel.addMasterPlayer(name: name)
-                    viewModel.togglePlayerSelection(id)
-                    newParticipantName = ""
-                }
-            } message: { Text("They will also be saved for future games.") }
+            .sheet(isPresented: $showAddParticipant) { AddParticipantSheet().environmentObject(viewModel) }
         }
     }
 
@@ -150,17 +139,17 @@ struct GameSetupView: View {
         }
         Section("Saved participants") {
             ForEach(viewModel.masterPlayerList) { participant in
-                Button { viewModel.togglePlayerSelection(participant.id) } label: {
+                Toggle(isOn: Binding(
+                    get: { viewModel.isPlayerSelectedForGame(participant.id) },
+                    set: { _ in viewModel.togglePlayerSelection(participant.id) }
+                )) {
                     HStack {
                         Circle().fill(participant.color.color).frame(width: 16, height: 16)
-                        Text(participant.name).foregroundStyle(.primary)
-                        Spacer()
-                        Image(systemName: viewModel.isPlayerSelectedForGame(participant.id) ? "checkmark.circle.fill" : "circle")
+                        Text(participant.name)
                     }
-                    .contentShape(Rectangle())
                 }
-                .accessibilityLabel(participant.name)
-                .accessibilityValue(viewModel.isPlayerSelectedForGame(participant.id) ? "Selected" : "Not selected")
+                .accessibilityLabel("\(participant.name), playing this game")
+                .disabled(viewModel.game.isDrawComplete || (!viewModel.isPlayerSelectedForGame(participant.id) && viewModel.game.sweepstakePlayers.count >= 15))
             }
         }
         if !participantsReady {

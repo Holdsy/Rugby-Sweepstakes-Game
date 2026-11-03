@@ -37,7 +37,14 @@ Drafts are associated with their game, fixture and team so work on one team does
 
 ## 4. Select participants and run the draw
 
-Use **Participants** to choose the people taking part. Saved people are reusable from the **People** tab.
+Use the **People** tab as your reusable address book. Each person has a **Playing this game** switch: on means they are included in the current game, and off means they stay saved for another game. The screen shows both the saved-person count and the number playing.
+
+Choose **Add Participant** to open **Add Person**. Enter a name and leave **Playing this game** on to use **Save & Add to Game**, or turn it off to use **Save Person**. Before a draw, you can also change the switches in **Match & Team → Participants**. Changes are saved automatically.
+
+After the draw, participant switches are locked to protect allocations. You can still add someone to the saved list for a future game. A game supports up to 15 selected people; the saved list can hold more. With seven participants and all 15 starters enabled, exclude one starter in Review & Draw so each person receives two of the remaining 14 players.
+
+<img src="screenshots/people-selection.png" width="300" alt="Saved participant switches with a seventh person enabled for the game">
+<img src="screenshots/add-person.png" width="300" alt="Add Person form with a Playing this game switch and Save and Add to Game action">
 
 You need at least two participants, and the number of enabled starters must divide equally between them. In **Review & Draw**, exclude starters if necessary. For example, six participants can each receive two of 12 enabled starters, leaving three excluded from the draw. Check exclusions before drawing.
 
