@@ -69,6 +69,12 @@ struct GameResultsView: View {
                     Text("\(game.pointsForParticipant(winner.id)) points\(game.winningParticipants.count > 1 ? " each" : "")")
                 }
             }
+            if game.isCompleted {
+                Section {
+                    Button { showShare = true } label: { Label("Share Final Results Image", systemImage: "photo.on.rectangle") }
+                    Text("Send the winners and full standings on WhatsApp or another app.").font(.caption).foregroundStyle(.secondary)
+                }
+            }
             if game.isDrawComplete {
             Section(game.isCompleted ? "Final standings" : "Current standings") {
                 ForEach(game.rankedParticipants) { person in
@@ -121,7 +127,10 @@ struct GameResultsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
         .toolbar { Button { showShare = true } label: { Label("Share Results", systemImage: "square.and.arrow.up") } }
-        .sheet(isPresented: $showShare) { ShareSheet(activityItems: [game.resultsShareText]) }
+        .sheet(isPresented: $showShare) {
+            if game.isCompleted { ResultsShareView(game: game) }
+            else { ShareSheet(activityItems: [game.resultsShareText]) }
+        }
         .confirmationDialog(game.isCompleted ? "Reopen this game?" : "Resume this game?", isPresented: $showReopen, titleVisibility: .visible) {
             Button(game.isCompleted ? "Reopen for Corrections" : "Resume Game") {
                 if viewModel.reopenGame(game.id) { dismiss(); onResume?() }

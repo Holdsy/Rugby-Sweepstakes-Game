@@ -114,6 +114,7 @@ struct MatchDayView: View {
         .sheet(isPresented: $showHistory) { MatchActivityView().environmentObject(viewModel) }
         .sheet(isPresented: $showShare) {
             if section == .allocations { DrawShareView(game: viewModel.game, englandSquad: viewModel.englandSquad) }
+            else if viewModel.game.isCompleted { ResultsShareView(game: viewModel.game) }
             else { ShareSheet(activityItems: [shareText]) }
         }
     }
