@@ -234,7 +234,7 @@ struct MatchDayView: View {
     }
 
     private func portrait(_ member: TeamMember) -> some View {
-        PlayerPortrait(name: member.name, remoteURL: viewModel.englandSquadPlayer(named: member.name)?.photoURL ?? PlayerPhotoCatalogue.url(named: member.name))
+        PlayerPortrait(name: member.name, remoteURL: viewModel.englandSquadPlayer(named: member.name)?.photoURL ?? PlayerPhotoCatalogue.url(named: member.name), teamName: viewModel.game.selectedTeamName)
             .frame(width: 40, height: 40).clipShape(Circle()).accessibilityHidden(true)
     }
 }

@@ -78,7 +78,7 @@ struct GameSetupView: View {
             }
             .sheet(isPresented: $showFixturePicker) { MatchdayImportView().environmentObject(viewModel) }
             .sheet(isPresented: $showTeamEditor) {
-                NavigationStack { TeamSetupView(showsDrawPreparation: false).environmentObject(viewModel) }
+                CurrentTeamReviewView().environmentObject(viewModel)
             }
             .alert("Add Participant", isPresented: $showAddParticipant) {
                 TextField("Name", text: $newParticipantName)
@@ -103,7 +103,7 @@ struct GameSetupView: View {
             Text("Look up fixtures by date, or try a saved sample.")
                 .font(.caption).foregroundStyle(.secondary)
             Button { showTeamEditor = true } label: {
-                Label(viewModel.game.isTeamSetupComplete ? "Review or Edit Team" : "Enter Team or Import a Photo", systemImage: "person.3")
+                Label(viewModel.game.isTeamSetupComplete ? "Review or Edit Team" : "Finalise Team", systemImage: "person.3")
             }
         } header: { Text("Choose your team") }
         Section("Current selection") {

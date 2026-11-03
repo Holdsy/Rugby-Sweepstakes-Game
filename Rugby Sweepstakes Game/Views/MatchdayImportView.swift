@@ -183,7 +183,6 @@ private struct FixtureTeamsView: View {
                 Text(reference.title).font(.headline)
                 if isSample { Text("Historical sample").font(.caption).foregroundStyle(.secondary) }
                 else {
-                    Button("Refresh Lineups") { Task { await load(refresh: true) } }.disabled(loading)
                     if let loadedAt { Text("Loaded \(loadedAt.formatted(date: .abbreviated, time: .shortened))").font(.caption).foregroundStyle(.secondary) }
                 }
             }
@@ -194,8 +193,17 @@ private struct FixtureTeamsView: View {
                     teamLink(fixture, home: true)
                     teamLink(fixture, home: false)
                 }
-                if fixture.lineups == nil {
-                    Section { Text("The provider has not supplied a lineup for this match. Choose a team to enter the names manually, or go back and import a photo.").font(.subheadline).foregroundStyle(.secondary) }
+                if fixture.lineups?.home == nil || fixture.lineups?.away == nil {
+                    Section("Lineup availability") {
+                        Text(isSample ? "This sample does not include a lineup for every team." : "Lineup not currently available from Highlightly for \(fixture.lineups?.home == nil && fixture.lineups?.away == nil ? "either team" : (fixture.lineups?.home == nil ? fixture.homeTeam.name : fixture.awayTeam.name)).")
+                            .font(.subheadline)
+                        if !isSample {
+                            Text("Open your team to refresh the lineup nearer the match. Highlightly may not provide lineups for every match, so availability is not guaranteed.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Text("Choose a team to finalise its lineup using the provider, a team-sheet photo or manual entry.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             } else if !loading && error != nil {
                 Section {
@@ -211,13 +219,13 @@ private struct FixtureTeamsView: View {
         let name = home ? fixture.homeTeam.name : fixture.awayTeam.name
         let sheet = home ? fixture.lineups?.home : fixture.lineups?.away
         return NavigationLink {
-            MatchdayLineupReview(teamName: name, sheet: sheet, isSample: isSample) { players, edited in
+            MatchdayLineupReview(teamName: name, sheet: sheet, isSample: isSample, matchID: isSample ? nil : fixture.id) { players, edited in
                 onImport(fixture, name, players, edited)
             }
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 Text(name)
-                Text(sheet == nil ? "No lineup · enter manually" : (sheet!.issues.isEmpty ? "Complete team sheet" : "Incomplete · review missing players"))
+                Text(sheet == nil ? "Lineup unavailable · enter manually" : (sheet!.issues.isEmpty ? "Complete team sheet" : "Incomplete · review missing players"))
                     .font(.caption).foregroundStyle(sheet?.issues.isEmpty == true ? Color.secondary : Color.orange)
             }
         }
@@ -236,64 +244,219 @@ private struct FixtureTeamsView: View {
     }
 }
 
+/// All lineup sources feed a draft here. The game changes only after Use This Team.
 private struct MatchdayLineupReview: View {
     @EnvironmentObject private var viewModel: GameViewModel
     let teamName: String
     let sheet: MatchdayFixture.TeamSheet?
     let isSample: Bool
+    let matchID: Int?
     let onImport: ([ExtractedPlayer], Bool) -> Void
     @State private var names: [String]
     @State private var confirmImport = false
+    @State private var showPhotoPicker = false
+    @State private var selectedImage: UIImage?
+    @State private var pendingPhoto: [ExtractedPlayer] = []
+    @State private var confirmPhoto = false
+    @State private var confirmRefresh = false
+    @State private var busy = false
+    @State private var message: String?
+    @State private var sourceNote: String?
+    @State private var squadSlot: SquadSlot?
+    @State private var showPhotoSources = false
+    @ObservedObject private var photoLibrary = PlayerPhotoLibrary.shared
     private let originalNames: [String]
-    init(teamName: String, sheet: MatchdayFixture.TeamSheet?, isSample: Bool, onImport: @escaping ([ExtractedPlayer], Bool) -> Void) {
-        self.teamName = teamName; self.sheet = sheet; self.isSample = isSample; self.onImport = onImport
-        let values = (1...23).map { number in sheet?.players.first { $0.shirtNumber == number }?.name ?? "" }
+    private struct SquadSlot: Identifiable { let id: Int }
+
+    init(teamName: String, sheet: MatchdayFixture.TeamSheet?, isSample: Bool, matchID: Int? = nil,
+         initialPlayers: [ExtractedPlayer]? = nil, onImport: @escaping ([ExtractedPlayer], Bool) -> Void) {
+        self.teamName = teamName; self.sheet = sheet; self.isSample = isSample; self.matchID = matchID; self.onImport = onImport
+        let values = (1...23).map { number in
+            initialPlayers?.first { $0.number == number }?.name ?? sheet?.players.first { $0.shirtNumber == number }?.name ?? ""
+        }
         originalNames = values; _names = State(initialValue: values)
     }
     private var missing: Int { names.filter { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count }
+    private var locked: Bool { viewModel.game.isDrawComplete }
+    private var isEngland: Bool { teamName.trimmingCharacters(in: .whitespacesAndNewlines).caseInsensitiveCompare("England") == .orderedSame }
+
     var body: some View {
         Form {
-            Section {
-                if isSample { Text("Historical sample · review before importing").font(.caption).foregroundStyle(.secondary) }
-                Text("Review the matchday 23. You can correct names or fill any gaps before importing.")
+            Section("Finalise your team") {
+                if isSample { Text("Historical sample").font(.caption).foregroundStyle(.secondary) }
+                Text("Enter names below, import a team-sheet photo or load the available lineup. Check the shirt numbers before using this team.")
                 LabeledContent("Named", value: "\(23 - missing) of 23")
-                if sheet == nil {
-                    Text("No provider lineup is available. Enter the team manually or return to photo import.").foregroundStyle(.orange)
-                } else if let sheet, !sheet.issues.isEmpty {
-                    ForEach(sheet.issues, id: \.self) { Text($0).font(.caption).foregroundStyle(.orange) }
-                    Text("Check the official team sheet and complete the fields below.").font(.caption).foregroundStyle(.secondary)
+                if missing > 0 { Text("\(missing) more \(missing == 1 ? "name is" : "names are") needed to use this team.").font(.caption).foregroundStyle(.secondary) }
+                if sheet == nil && matchID != nil && sourceNote == nil {
+                    Text("Lineup not currently available from Highlightly for this team. Try refreshing, import a photo or enter the names below.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
-                if viewModel.game.isDrawComplete { Text("This game’s team is locked. Start a new game before importing another lineup.").foregroundStyle(.orange) }
+                if locked { Text("Your team is locked after the draw. Start a new game to change the lineup.").foregroundStyle(.orange) }
+                if let sourceNote { Text(sourceNote).font(.caption).foregroundStyle(.secondary) }
+                if let message { Text(message).font(.subheadline).foregroundStyle(.orange) }
             }
-            lineupSection("Starting XV", range: 0..<15)
-            lineupSection("Replacements", range: 15..<23)
-            Section { Text("Import replaces the team and scores in your current setup. Your saved participants remain.").font(.caption).foregroundStyle(.secondary) }
+            Section("Import options") {
+                Button { selectedImage = nil; showPhotoPicker = true } label: {
+                    Label("Import Team-Sheet Photo", systemImage: "photo.on.rectangle")
+                }
+                if matchID != nil {
+                    Button { confirmRefresh = true } label: {
+                        Label("Refresh Highlightly Lineup", systemImage: "arrow.clockwise")
+                    }
+                    Text("Lineups may not be available for every match. If supplied, the selected team’s lineup will replace this draft after confirmation.")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else if let sheet {
+                    Button("Restore Original Lineup") { confirmRefresh = true }
+                        .disabled(sheet.players.isEmpty)
+                }
+                Button { showPhotoSources = true } label: {
+                    Label("Photo Pages & Squads", systemImage: "person.crop.rectangle.stack")
+                }
+                Text("Load a saved squad to choose players by name and photo, or add another team’s photo page.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Text("Imports update this draft. Nothing is saved to your game until you choose Use This Team.")
+                    .font(.caption).foregroundStyle(.secondary)
+                if busy { ProgressView("Loading players…") }
+            }.disabled(locked || busy)
+            Group {
+                lineupSection("Starting XV", range: 0..<15)
+                lineupSection("Replacements", range: 15..<23)
+            }.disabled(locked || busy)
         }
         .navigationTitle(teamName).navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Import Team") { confirmImport = true }.disabled(missing > 0 || viewModel.game.isDrawComplete)
-            }
+        .toolbar(.visible, for: .navigationBar)
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 6) {
+                Button("Use This Team") { confirmImport = true }
+                    .buttonStyle(.borderedProminent).controlSize(.large)
+                    .frame(maxWidth: .infinity)
+                    .disabled(missing > 0 || locked || busy)
+                Text(missing > 0 ? "Complete all 15 starters and 8 replacements." : "All 23 names ready — check the lineup before saving.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }.padding().frame(maxWidth: .infinity).background(.regularMaterial)
         }
-        .confirmationDialog("Replace the team in your current setup?", isPresented: $confirmImport, titleVisibility: .visible) {
-            Button("Import Reviewed Team") {
-                guard missing == 0 && !viewModel.game.isDrawComplete else { return }
+        .confirmationDialog("Use this team for your sweepstake?", isPresented: $confirmImport, titleVisibility: .visible) {
+            Button("Use This Team") {
+                guard missing == 0 && !locked else { return }
                 onImport(names.enumerated().map { ExtractedPlayer(number: $0.offset + 1, name: $0.element.trimmingCharacters(in: .whitespacesAndNewlines)) }, sheet == nil || names != originalNames)
             }
+        } message: { Text("This replaces the team in your current setup. Your participants remain selected.") }
+        .confirmationDialog("Replace the draft with the available lineup?", isPresented: $confirmRefresh, titleVisibility: .visible) {
+            Button("Load Lineup") { Task { await refreshLineup() } }
+        } message: { Text("Any names you have entered will be replaced only if a lineup is available.") }
+        .confirmationDialog("Apply names from this photo?", isPresented: $confirmPhoto, titleVisibility: .visible) {
+            Button("Apply Photo Names") {
+                guard !locked else { return }
+                for player in pendingPhoto {
+                    if let number = player.number { names[number - 1] = player.name }
+                }
+                sourceNote = "Photo names applied. Check every name and shirt number before using this team."
+                pendingPhoto = []
+            }
+            Button("Cancel", role: .cancel) { pendingPhoto = [] }
+        } message: { Text("\(pendingPhoto.count) numbered names found. Matching shirts will be replaced; other names stay as entered.") }
+        .sheet(isPresented: $showPhotoPicker, onDismiss: {
+            if let image = selectedImage { selectedImage = nil; Task { await readPhoto(image) } }
+        }) {
+            PhotoPickerView(selectedImage: $selectedImage) { showPhotoPicker = false }
         }
+        .sheet(item: $squadSlot) { slot in
+            EnglandPlayerPickerView(players: availableSquad(for: slot.id), currentPlayer: squadPlayers.first { EnglandPlayerNameMatcher.key($0.name) == EnglandPlayerNameMatcher.key(names[slot.id]) }, onSelect: { player in
+                if !locked { names[slot.id] = player?.name ?? "" }
+                squadSlot = nil
+            }, teamName: teamName)
+        }
+        .sheet(isPresented: $showPhotoSources) { PhotoSourcesView() }
     }
+
+    private var squadPlayers: [EnglandSquadPlayer] {
+        let imported = photoLibrary.players(for: teamName)
+        return imported.isEmpty && isEngland ? viewModel.englandSquad : imported
+    }
+
     private func lineupSection(_ title: String, range: Range<Int>) -> some View {
         Section(title) {
             ForEach(range, id: \.self) { index in
                 HStack {
                     Text("\(index + 1)").monospacedDigit().foregroundStyle(.secondary).frame(width: 30)
+                    if !names[index].isEmpty {
+                        PlayerPortrait(name: names[index], remoteURL: isEngland ? viewModel.englandSquadPlayer(named: names[index])?.photoURL : nil, teamName: teamName)
+                            .frame(width: 32, height: 32)
+                    }
                     TextField("Player name", text: $names[index]).autocorrectionDisabled()
                         .accessibilityLabel("Shirt \(index + 1) player name")
+                    if !squadPlayers.isEmpty {
+                        Button { squadSlot = SquadSlot(id: index) } label: { Image(systemName: "person.crop.circle.badge.plus") }
+                            .buttonStyle(.borderless).accessibilityLabel("Choose squad player for shirt \(index + 1)")
+                    }
                     if names[index].trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         Image(systemName: "exclamationmark.circle").foregroundStyle(.orange).accessibilityLabel("Missing name")
                     }
                 }
             }
+        }
+    }
+    private func availableSquad(for slot: Int) -> [EnglandSquadPlayer] {
+        let used = Set(names.enumerated().filter { $0.offset != slot }.map { EnglandPlayerNameMatcher.key($0.element) })
+        return squadPlayers.filter { !used.contains(EnglandPlayerNameMatcher.key($0.name)) }
+    }
+    private func refreshLineup() async {
+        guard !busy && !locked else { return }
+        busy = true; message = nil
+        defer { busy = false }
+        do {
+            let replacement: MatchdayFixture.TeamSheet?
+            if let matchID {
+                guard let key = HighlightlyCredentials.load() else { throw HighlightlyClient.APIError.missingKey }
+                let fixture = try await HighlightlyClient().fixture(id: matchID, key: key, refresh: true)
+                replacement = fixture.homeTeam.name == teamName ? fixture.lineups?.home : (fixture.awayTeam.name == teamName ? fixture.lineups?.away : nil)
+            } else { replacement = sheet }
+            guard let replacement, !replacement.players.isEmpty else {
+                message = "Lineup not currently available from Highlightly for this team. Your draft has been kept."
+                return
+            }
+            guard !locked else { return }
+            names = (1...23).map { number in replacement.players.first { $0.shirtNumber == number }?.name ?? "" }
+            sourceNote = "Lineup loaded. Review all 23 names before using this team."
+        } catch { message = error.localizedDescription }
+    }
+    private func readPhoto(_ image: UIImage) async {
+        guard !busy && !locked else { return }
+        busy = true; message = nil
+        let players = await TeamPhotoImporter.extractPlayers(from: image)
+        busy = false
+        guard !locked else { return }
+        let numbered = players.filter { player in
+            guard let number = player.number else { return false }
+            return (1...23).contains(number) && !player.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        guard !numbered.isEmpty else {
+            message = "No numbered players could be read. Try a clearer photo showing shirt numbers 1–23, or enter the names manually. Your draft has been kept."
+            return
+        }
+        guard Set(numbered.compactMap(\.number)).count == numbered.count else {
+            message = "The photo contains repeated shirt numbers. Use a photo of just the selected team, or enter the names manually. Your draft has been kept."
+            return
+        }
+        pendingPhoto = numbered; confirmPhoto = true
+    }
+}
+
+/// Manual setup and reopening an existing draft use the same finalisation screen.
+struct CurrentTeamReviewView: View {
+    @EnvironmentObject private var viewModel: GameViewModel
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        NavigationStack {
+            MatchdayLineupReview(teamName: viewModel.game.selectedTeamName ?? "Your Team", sheet: nil, isSample: false,
+                matchID: viewModel.game.providerMatchID,
+                initialPlayers: viewModel.game.teamMembers.enumerated().map { ExtractedPlayer(number: $0.offset + 1, name: $0.element.name) }) { players, _ in
+                let game = viewModel.game
+                viewModel.importMatchdayTeam(players, fixtureName: game.fixtureName, teamName: game.selectedTeamName,
+                    fixtureDate: game.fixtureDate, providerMatchID: game.providerMatchID, providerName: "Reviewed team")
+                dismiss()
+            }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
         }
     }
 }

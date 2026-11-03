@@ -3,10 +3,11 @@ import SwiftUI
 struct EnglandPlayerSummary: View {
     let player: EnglandSquadPlayer?
     let fallbackName: String
+    var teamName: String? = nil
 
     var body: some View {
         HStack(spacing: 10) {
-            PlayerPortrait(name: fallbackName, remoteURL: player?.photoURL ?? PlayerPhotoCatalogue.url(named: fallbackName))
+            PlayerPortrait(name: fallbackName, remoteURL: player?.photoURL ?? PlayerPhotoCatalogue.url(named: fallbackName), teamName: teamName)
             .frame(width: 48, height: 48)
             .clipShape(Circle())
 
@@ -20,7 +21,7 @@ struct EnglandPlayerSummary: View {
                         if let age = player.age {
                             Text("Age \(age)")
                         }
-                        Text(player.caps.map { "\($0) caps" } ?? "Uncapped")
+                        if let caps = player.caps { Text("\(caps) caps") }
                     }
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -49,7 +50,7 @@ struct TeamMemberProfileView: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            PlayerPortrait(name: member.name, remoteURL: squadPlayer?.photoURL ?? PlayerPhotoCatalogue.url(named: member.name))
+            PlayerPortrait(name: member.name, remoteURL: squadPlayer?.photoURL ?? PlayerPhotoCatalogue.url(named: member.name), teamName: viewModel.game.selectedTeamName)
             .frame(width: imageSize, height: imageSize)
             .clipShape(Circle())
             .accessibilityHidden(true)
@@ -81,6 +82,7 @@ struct EnglandPlayerPickerView: View {
     let players: [EnglandSquadPlayer]
     let currentPlayer: EnglandSquadPlayer?
     let onSelect: (EnglandSquadPlayer?) -> Void
+    var teamName: String? = "England"
     @State private var searchText = ""
 
     private var filteredPlayers: [EnglandSquadPlayer] {
@@ -105,12 +107,12 @@ struct EnglandPlayerPickerView: View {
                     Button {
                         onSelect(player)
                     } label: {
-                        EnglandPlayerSummary(player: player, fallbackName: player.name)
+                        EnglandPlayerSummary(player: player, fallbackName: player.name, teamName: teamName)
                     }
                 }
             }
             .searchable(text: $searchText, prompt: "Search players")
-            .navigationTitle("Choose England Player")
+            .navigationTitle("Choose \(teamName ?? "Squad") Player")
             .navigationBarTitleDisplayMode(.inline)
         }
     }
@@ -120,6 +122,8 @@ struct EnglandPlayerPickerView: View {
 struct PlayerPortrait: View {
     let name: String
     let remoteURL: URL?
+    var teamName: String? = nil
+    @ObservedObject private var library = PlayerPhotoLibrary.shared
     @State private var downloadedImage: UIImage?
     @State private var loadedURL: URL?
 
@@ -134,7 +138,7 @@ struct PlayerPortrait: View {
                 Circle().fill(Color.secondary.opacity(0.08))
                 if let asset = PlayerPhotoCatalogue.assetName(named: name) {
                     portrait(Image(asset), size: geometry.size)
-                } else if loadedURL == remoteURL, let downloadedImage {
+                } else if loadedURL != nil, let downloadedImage {
                     portrait(Image(uiImage: downloadedImage), size: geometry.size)
                 } else {
                     if initials.isEmpty {
@@ -154,14 +158,20 @@ struct PlayerPortrait: View {
             .overlay { Circle().strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5) }
         }
         .accessibilityHidden(true)
-        .task(id: remoteURL) {
-            downloadedImage = nil
-            loadedURL = nil
-            guard PlayerPhotoCatalogue.assetName(named: name) == nil, let remoteURL else { return }
-            let image = await PlayerPortraitCache.image(at: remoteURL)
+        .task(id: "\(name)|\(teamName ?? "")|\(remoteURL?.absoluteString ?? "")|\(library.revision)") {
+            downloadedImage = nil; loadedURL = nil
+            guard PlayerPhotoCatalogue.assetName(named: name) == nil else { return }
+            let preferred = library.officialPhoto(name: name, team: teamName) ?? remoteURL
+            if let preferred, let image = await PlayerPortraitCache.image(at: preferred) {
+                guard !Task.isCancelled else { return }
+                downloadedImage = image; loadedURL = preferred
+                return
+            }
             guard !Task.isCancelled else { return }
-            downloadedImage = image
-            loadedURL = remoteURL
+            if let fallback = await library.sportsPhoto(name: name, team: teamName),
+               let image = await PlayerPortraitCache.image(at: fallback), !Task.isCancelled {
+                downloadedImage = image; loadedURL = fallback
+            }
         }
     }
 

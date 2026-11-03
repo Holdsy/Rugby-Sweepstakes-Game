@@ -11,17 +11,9 @@ struct TeamSetupView: View {
     var showsDrawPreparation = true
     @EnvironmentObject var viewModel: GameViewModel
     @Environment(\.dismiss) private var dismiss
-    @State private var showFixturePicker = false
-    @State private var showPhotoPicker = false
-    @State private var selectedImage: UIImage?
-    @State private var extractedPlayers: [ExtractedPlayer] = []
-    @State private var showImportReview = false
-    @State private var isProcessingImage = false
+    @State private var showTeamReview = false
     @State private var showResetConfirmation = false
-    @State private var showImportFailure = false
-    @State private var isImportingEnglandSquad = false
-    @State private var englandImportError: String?
-    
+
     var body: some View {
         ZStack {
             LiquidGlassBackground()
@@ -52,23 +44,8 @@ struct TeamSetupView: View {
                         Spacer()
                         
                         Menu {
-                            Button {
-                                showFixturePicker = true
-                            } label: {
-                                Label("Choose Fixture & Team", systemImage: "sportscourt")
-                            }
-
-                            Button {
-                                importEnglandSquad()
-                            } label: {
-                                Label("Import England Squad", systemImage: "arrow.down.circle")
-                            }
-                            .disabled(isImportingEnglandSquad)
-
-                            Button {
-                                showPhotoPicker = true
-                            } label: {
-                                Label("Import from Photo", systemImage: "photo.on.rectangle")
+                            Button { showTeamReview = true } label: {
+                                Label("Finalise Team", systemImage: "person.3")
                             }
 
                             Button(role: .destructive) {
@@ -238,8 +215,8 @@ struct TeamSetupView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
-        .sheet(isPresented: $showFixturePicker) {
-            MatchdayImportView().environmentObject(viewModel)
+        .sheet(isPresented: $showTeamReview) {
+            CurrentTeamReviewView().environmentObject(viewModel)
         }
         .alert("Reset Team", isPresented: $showResetConfirmation) {
             Button("Cancel", role: .cancel) { }
@@ -249,95 +226,9 @@ struct TeamSetupView: View {
         } message: {
             Text("Are you sure you want to clear all team information? This will remove all player names and cannot be undone.")
         }
-        .alert("No Players Found", isPresented: $showImportFailure) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text("Try another photo with the full team list clearly visible, or enter the names manually.")
-        }
-        .alert("England Squad Import", isPresented: Binding(
-            get: { englandImportError != nil },
-            set: { if !$0 { englandImportError = nil } }
-        )) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text(englandImportError ?? "")
-        }
-        .sheet(isPresented: $showPhotoPicker) {
-            PhotoPickerView(selectedImage: $selectedImage) {
-                showPhotoPicker = false
-                if let image = selectedImage {
-                    processImage(image)
-                }
-            }
-        }
-        .sheet(isPresented: $showImportReview) {
-            TeamImportView(
-                extractedPlayers: extractedPlayers,
-                onImport: { players in
-                    viewModel.importPlayers(players)
-                    showImportReview = false
-                    selectedImage = nil
-                    extractedPlayers = []
-                },
-                onCancel: {
-                    showImportReview = false
-                    selectedImage = nil
-                    extractedPlayers = []
-                }
-            )
-        }
-        .overlay {
-            if isProcessingImage || isImportingEnglandSquad {
-                ZStack {
-                    Color.black.opacity(0.3)
-                        .ignoresSafeArea()
-                    
-                    VStack(spacing: 16) {
-                        ProgressView()
-                            .scaleEffect(1.5)
-                        Text(isImportingEnglandSquad ? "Importing England squad…" : "Extracting player information...")
-                            .foregroundColor(.white)
-                            .font(.headline)
-                    }
-                    .padding()
-                    .background(Color(.systemBackground))
-                    .cornerRadius(12)
-                }
-            }
-        }
-    }
-    
-    private func processImage(_ image: UIImage) {
-        isProcessingImage = true
-        
-        Task {
-            let players = await TeamPhotoImporter.extractPlayers(from: image)
-            
-            await MainActor.run {
-                isProcessingImage = false
-                extractedPlayers = players
-                if !players.isEmpty {
-                    showImportReview = true
-                } else {
-                    showImportFailure = true
-                }
-            }
-        }
-    }
-
-    private func importEnglandSquad() {
-        isImportingEnglandSquad = true
-        Task {
-            do {
-                try await viewModel.importEnglandSquad()
-                isImportingEnglandSquad = false
-            } catch {
-                isImportingEnglandSquad = false
-                englandImportError = error.localizedDescription
-            }
-        }
     }
 }
+
 
 struct TeamMemberRow: View {
     let member: TeamMember
