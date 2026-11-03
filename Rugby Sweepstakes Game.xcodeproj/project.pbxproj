@@ -13,6 +13,7 @@
 /* Begin PBXFileReference section */
 		A4936E182EE0493800B60BF7 /* Rugby Sweepstakes Game.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Rugby Sweepstakes Game.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A4936E532EE08BCC00B60BF7 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
+		BACC00000000000000000002 /* RuckOfTheDrawTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RuckOfTheDrawTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -21,6 +22,7 @@
 			path = "Rugby Sweepstakes Game";
 			sourceTree = "<group>";
 		};
+		BACC00000000000000000003 /* RuckOfTheDrawTests */ = {isa = PBXFileSystemSynchronizedRootGroup; path = RuckOfTheDrawTests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -31,6 +33,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BACC00000000000000000005 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -39,6 +42,7 @@
 			children = (
 				A4936E532EE08BCC00B60BF7 /* AppIcon.icon */,
 				A4936E1A2EE0493800B60BF7 /* Rugby Sweepstakes Game */,
+                BACC00000000000000000003 /* RuckOfTheDrawTests */,
 				A4936E192EE0493800B60BF7 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -47,6 +51,7 @@
 			isa = PBXGroup;
 			children = (
 				A4936E182EE0493800B60BF7 /* Rugby Sweepstakes Game.app */,
+                BACC00000000000000000002 /* RuckOfTheDrawTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -76,7 +81,26 @@
 			productReference = A4936E182EE0493800B60BF7 /* Rugby Sweepstakes Game.app */;
 			productType = "com.apple.product-type.application";
 		};
+		BACC00000000000000000001 /* RuckOfTheDrawTests */ = {
+            isa = PBXNativeTarget;
+            buildConfigurationList = BACC00000000000000000007;
+            buildPhases = (BACC00000000000000000004, BACC00000000000000000005, BACC00000000000000000006);
+            buildRules = ();
+            dependencies = (BACC0000000000000000000B);
+            fileSystemSynchronizedGroups = (BACC00000000000000000003);
+            name = RuckOfTheDrawTests;
+            productName = RuckOfTheDrawTests;
+            productReference = BACC00000000000000000002;
+            productType = "com.apple.product-type.bundle.unit-test";
+        };
 /* End PBXNativeTarget section */
+
+/* Begin PBXContainerItemProxy section */
+        BACC0000000000000000000A = {isa = PBXContainerItemProxy; containerPortal = A4936E102EE0493800B60BF7; proxyType = 1; remoteGlobalIDString = A4936E172EE0493800B60BF7; remoteInfo = "Rugby Sweepstakes Game"; };
+/* End PBXContainerItemProxy section */
+/* Begin PBXTargetDependency section */
+        BACC0000000000000000000B = {isa = PBXTargetDependency; target = A4936E172EE0493800B60BF7; targetProxy = BACC0000000000000000000A; };
+/* End PBXTargetDependency section */
 
 /* Begin PBXProject section */
 		A4936E102EE0493800B60BF7 /* Project object */ = {
@@ -105,6 +129,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+                BACC00000000000000000001 /* RuckOfTheDrawTests */,
 				A4936E172EE0493800B60BF7 /* Rugby Sweepstakes Game */,
 			);
 		};
@@ -119,6 +144,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BACC00000000000000000006 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -129,6 +155,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BACC00000000000000000004 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
@@ -259,10 +286,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 7SQ4627DH5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Ruck of the Draw";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -292,10 +321,12 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = 7SQ4627DH5;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "Ruck of the Draw";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.sports";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -319,6 +350,26 @@
 			};
 			name = Release;
 		};
+        BACC00000000000000000008 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {
+            BUNDLE_LOADER = "$(TEST_HOST)";
+            CODE_SIGN_STYLE = Automatic;
+            GENERATE_INFOPLIST_FILE = YES;
+            PRODUCT_BUNDLE_IDENTIFIER = "com.MarkHoldsworth.Rugby-Sweepstakes-Game.RegressionTests";
+            PRODUCT_NAME = "$(TARGET_NAME)";
+            SWIFT_VERSION = 5.0;
+            TARGETED_DEVICE_FAMILY = "1,2";
+            TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Rugby Sweepstakes Game.app/Rugby Sweepstakes Game";
+        }; name = Debug; };
+        BACC00000000000000000009 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {
+            BUNDLE_LOADER = "$(TEST_HOST)";
+            CODE_SIGN_STYLE = Automatic;
+            GENERATE_INFOPLIST_FILE = YES;
+            PRODUCT_BUNDLE_IDENTIFIER = "com.MarkHoldsworth.Rugby-Sweepstakes-Game.RegressionTests";
+            PRODUCT_NAME = "$(TARGET_NAME)";
+            SWIFT_VERSION = 5.0;
+            TARGETED_DEVICE_FAMILY = "1,2";
+            TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Rugby Sweepstakes Game.app/Rugby Sweepstakes Game";
+        }; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -340,6 +391,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+        BACC00000000000000000007 = {isa = XCConfigurationList; buildConfigurations = (BACC00000000000000000008, BACC00000000000000000009); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 	};
 	rootObject = A4936E102EE0493800B60BF7 /* Project object */;

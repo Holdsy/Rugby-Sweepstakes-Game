@@ -80,14 +80,7 @@ struct GameResultsView: View {
                 ForEach(game.rankedParticipants) { person in
                     DisclosureGroup(isExpanded: Binding(get: { expanded.contains(person.id) }, set: { if $0 { expanded.insert(person.id) } else { expanded.remove(person.id) } })) {
                         ForEach(person.assignedTeamMemberIds, id: \.self) { id in
-                            if let player = game.teamMembers.first(where: { $0.id == id }) {
-                                VStack(alignment: .leading, spacing: 3) {
-                                    HStack { Text(player.name); Spacer(); Text("\(game.pointsForBundle(id)) pts") }
-                                    if let replacement = game.teamMembers.first(where: { $0.id == player.linkedSubstituteId }) {
-                                        Text("\(replacement.name) on").font(.caption).foregroundStyle(.secondary)
-                                    }
-                                }.font(.subheadline)
-                            }
+                            AllocationScoreBreakdown(game: game, bundleID: id)
                         }
                     } label: {
                         HStack(spacing: 10) {

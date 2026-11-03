@@ -23,7 +23,8 @@ struct MatchDayView: View {
         var id: String { rawValue }
     }
     private var players: [TeamMember] {
-        viewModel.game.teamMembers.filter { member in
+        let ordered = filter == .onField ? viewModel.onFieldMembersInPositionOrder : viewModel.game.teamMembers
+        return ordered.filter { member in
             let matchesFilter = filter == .all || (filter == .onField ? viewModel.isOnField(member) : !viewModel.isOnField(member))
             let matchesSearch = search.isEmpty || member.name.localizedCaseInsensitiveContains(search) || String(shirtNumber(member)).contains(search)
             return !member.name.isEmpty && matchesFilter && matchesSearch
@@ -37,7 +38,7 @@ struct MatchDayView: View {
     }
     private var shareText: String {
         if viewModel.game.isCompleted && section != .allocations { return viewModel.game.resultsShareText }
-        var lines = ["Rugby Sweepstakes — Current \(section.rawValue)"]
+        var lines = ["Ruck of the Draw — Current \(section.rawValue)"]
         lines.append(viewModel.game.displayTitle)
         if let team = viewModel.game.selectedTeamName { lines.append("Following \(team)") }
         for participant in viewModel.getSortedSweepstakePlayers() {
@@ -190,13 +191,7 @@ struct MatchDayView: View {
                     set: { if $0 { expandedParticipants.insert(participant.id) } else { expandedParticipants.remove(participant.id) } }
                 )) {
                     ForEach(participant.assignedTeamMemberIds, id: \.self) { id in
-                        if let member = viewModel.getTeamMember(by: id) {
-                            HStack {
-                                Text(member.name)
-                                Spacer()
-                                Text("\(viewModel.getTotalPointsForTeamMember(id)) pts").monospacedDigit()
-                            }.font(.subheadline)
-                        }
+                        AllocationScoreBreakdown(game: viewModel.game, bundleID: id)
                     }
                 } label: {
                     HStack(spacing: 10) {

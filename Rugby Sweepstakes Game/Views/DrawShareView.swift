@@ -102,7 +102,7 @@ struct DrawSharePoster: View {
         return game.teamMembers.filter { assigned.contains($0.id) || substitutes.contains($0.id) }
     }
     static func text(for game: Game) -> String {
-        var lines = ["RUGBY SWEEPSTAKES · YOUR DRAW", game.displayTitle]
+        var lines = ["RUCK OF THE DRAW · YOUR DRAW", game.displayTitle]
         if let team = game.selectedTeamName { lines.append("Following \(team)") }
         for participant in game.sweepstakePlayers {
             lines.append("\n\(participant.name)")
@@ -120,7 +120,7 @@ struct DrawSharePoster: View {
         VStack(alignment: .leading, spacing: 28) {
             HStack(spacing: 14) {
                 Image(systemName: "sportscourt.fill").font(.system(size: 28))
-                Text("RUGBY SWEEPSTAKES").font(.system(size: 23, weight: .bold, design: .rounded)).tracking(3)
+                Text("RUCK OF THE DRAW").font(.system(size: 23, weight: .bold, design: .rounded)).tracking(3)
                 Spacer()
                 Text("YOUR DRAW").font(.system(size: 19, weight: .bold)).padding(.horizontal, 18).padding(.vertical, 10)
                     .background(.white.opacity(0.15), in: Capsule())

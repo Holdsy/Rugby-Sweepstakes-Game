@@ -15,7 +15,7 @@ struct DrawResultsView: View {
     // Build a simple text summary of the draw that can be shared
     private var shareText: String {
         var lines: [String] = []
-        lines.append("Rugby Sweepstakes – Draw Results")
+        lines.append("Ruck of the Draw – Draw Results")
         lines.append("")
         
         for player in viewModel.game.sweepstakePlayers {

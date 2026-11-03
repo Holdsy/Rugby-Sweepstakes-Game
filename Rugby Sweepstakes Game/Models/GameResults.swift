@@ -7,7 +7,7 @@ extension Game {
     var displayTitle: String {
         let title = [fixtureName, name, selectedTeamName].compactMap { value in
             value?.trimmingCharacters(in: .whitespacesAndNewlines)
-        }.first { !$0.isEmpty } ?? "Rugby Sweepstake"
+        }.first { !$0.isEmpty } ?? "Ruck of the Draw"
         guard let fixtureDate, !fixtureDate.isEmpty else { return title }
         let parser = ISO8601DateFormatter()
         parser.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -60,7 +60,7 @@ extension Game {
     }
 
     var resultsShareText: String {
-        var lines = ["Rugby Sweepstakes — \(isCompleted ? "Final Results" : "Current Standings")", displayTitle]
+        var lines = ["Ruck of the Draw — \(isCompleted ? "Final Results" : "Current Standings")", displayTitle]
         if let selectedTeamName { lines.append("Following \(selectedTeamName)") }
         if isCompleted, !winningParticipants.isEmpty {
             lines.append("\(winningParticipants.count == 1 ? "Winner" : "Joint winners"): \(winningParticipants.map(\.name).joined(separator: ", "))")
@@ -76,4 +76,37 @@ struct SavedGameState: Codable {
     var version = 1
     let game: Game
     let savedGames: [Game]
+}
+
+struct AllocationScoreContribution: Identifiable {
+    var id: UUID { member.id }
+    let member: TeamMember
+    let points: Int
+    let isReplacement: Bool
+    let isOnField: Bool
+}
+
+extension Game {
+    /// Use the score receipt's allocation, not the player's lifetime counters: a substitute can move between allocations.
+    func allocationContributions(for bundleID: UUID) -> [AllocationScoreContribution] {
+        guard let starter = teamMembers.first(where: { $0.id == bundleID }) else { return [] }
+        var ids = [bundleID]
+        if scoringBaseline != nil {
+            ids += (substitutionHistory ?? []).filter { $0.starterID == bundleID }.map(\.replacementID)
+            ids += (scoringHistory ?? []).filter { $0.bundleID == bundleID }.map(\.teamMemberID)
+        }
+        if let current = starter.linkedSubstituteId { ids.append(current) }
+        var seen = Set<UUID>()
+        return ids.filter { seen.insert($0).inserted }.compactMap { id in
+            guard let member = teamMembers.first(where: { $0.id == id }) else { return nil }
+            let points = scoringBaseline == nil ? member.points : (scoringHistory ?? [])
+                .filter { $0.bundleID == bundleID && $0.teamMemberID == id && $0.undoneAt == nil }
+                .reduce(0) { $0 + $1.points }
+            return AllocationScoreContribution(member: member, points: points, isReplacement: id != bundleID,
+                isOnField: id == bundleID ? starter.linkedSubstituteId == nil : starter.linkedSubstituteId == id)
+        }
+    }
+    func earlierAllocationPoints(for bundleID: UUID) -> Int {
+        scoringBaseline?.first { $0.bundleID == bundleID }?.points ?? 0
+    }
 }

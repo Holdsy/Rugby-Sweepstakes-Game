@@ -533,6 +533,13 @@ class GameViewModel: ObservableObject {
         return game.sweepstakePlayers.first { $0.assignedTeamMemberIds.contains(bundleID) }
     }
 
+    var onFieldMembersInPositionOrder: [TeamMember] {
+        game.starters.compactMap { starter in
+            if let id = starter.linkedSubstituteId { return getTeamMember(by: id) }
+            return starter
+        }
+    }
+
     func isOnField(_ member: TeamMember) -> Bool {
         member.isStarter ? member.linkedSubstituteId == nil : game.starters.contains { $0.linkedSubstituteId == member.id }
     }

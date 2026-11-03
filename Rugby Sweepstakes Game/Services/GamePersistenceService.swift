@@ -8,6 +8,8 @@
 import Foundation
 
 class GamePersistenceService {
+    private let defaults: UserDefaults
+    init(defaults: UserDefaults = .standard) { self.defaults = defaults }
     private let stateKey = "rugby_sweepstake_state_v1"
     private let gameKey = "rugby_sweepstake_game"
     private let masterPlayersKey = "rugby_sweepstake_master_players"
@@ -17,17 +19,17 @@ class GamePersistenceService {
     /// One encoded value keeps current game and history together when switching games.
     func saveState(game: Game, savedGames: [Game]) throws {
         let data = try JSONEncoder().encode(SavedGameState(game: game, savedGames: savedGames))
-        UserDefaults.standard.set(data, forKey: stateKey)
+        defaults.set(data, forKey: stateKey)
     }
 
     func loadState() throws -> SavedGameState? {
-        if let data = UserDefaults.standard.data(forKey: stateKey) {
+        if let data = defaults.data(forKey: stateKey) {
             let state = try JSONDecoder().decode(SavedGameState.self, from: data)
             guard state.version == 1 else { throw CocoaError(.coderReadCorrupt) }
             return state
         }
         // Keep the original legacy save intact during migration.
-        if let data = UserDefaults.standard.data(forKey: gameKey) {
+        if let data = defaults.data(forKey: gameKey) {
             return SavedGameState(game: try JSONDecoder().decode(Game.self, from: data), savedGames: [])
         }
         return nil
@@ -35,12 +37,12 @@ class GamePersistenceService {
 
     func saveGame(_ game: Game) {
         if let encoded = try? JSONEncoder().encode(game) {
-            UserDefaults.standard.set(encoded, forKey: gameKey)
+            defaults.set(encoded, forKey: gameKey)
         }
     }
     
     func loadGame() -> Game? {
-        guard let data = UserDefaults.standard.data(forKey: gameKey),
+        guard let data = defaults.data(forKey: gameKey),
               let game = try? JSONDecoder().decode(Game.self, from: data) else {
             return nil
         }
@@ -48,19 +50,19 @@ class GamePersistenceService {
     }
     
     func clearGame() {
-        UserDefaults.standard.removeObject(forKey: gameKey)
+        defaults.removeObject(forKey: gameKey)
     }
     
     // MARK: - Master Player List Persistence
     
     func saveMasterPlayerList(_ players: [SweepstakePlayer]) {
         if let encoded = try? JSONEncoder().encode(players) {
-            UserDefaults.standard.set(encoded, forKey: masterPlayersKey)
+            defaults.set(encoded, forKey: masterPlayersKey)
         }
     }
     
     func loadMasterPlayerList() -> [SweepstakePlayer] {
-        guard let data = UserDefaults.standard.data(forKey: masterPlayersKey),
+        guard let data = defaults.data(forKey: masterPlayersKey),
               let players = try? JSONDecoder().decode([SweepstakePlayer].self, from: data) else {
             return []
         }
@@ -69,16 +71,16 @@ class GamePersistenceService {
 
     func saveEnglandSquad(_ players: [EnglandSquadPlayer], importedAt: Date) {
         if let encoded = try? JSONEncoder().encode(players) {
-            UserDefaults.standard.set(encoded, forKey: englandSquadKey)
-            UserDefaults.standard.set(importedAt, forKey: englandSquadImportDateKey)
+            defaults.set(encoded, forKey: englandSquadKey)
+            defaults.set(importedAt, forKey: englandSquadImportDateKey)
         }
     }
 
     func loadEnglandSquad() -> (players: [EnglandSquadPlayer], importedAt: Date?) {
-        guard let data = UserDefaults.standard.data(forKey: englandSquadKey),
+        guard let data = defaults.data(forKey: englandSquadKey),
               let players = try? JSONDecoder().decode([EnglandSquadPlayer].self, from: data) else {
             return ([], nil)
         }
-        return (players, UserDefaults.standard.object(forKey: englandSquadImportDateKey) as? Date)
+        return (players, defaults.object(forKey: englandSquadImportDateKey) as? Date)
     }
 }

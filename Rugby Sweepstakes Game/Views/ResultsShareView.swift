@@ -58,7 +58,7 @@ struct ResultsSharePoster: View {
         VStack(alignment: .leading, spacing: 28) {
             HStack(spacing: 14) {
                 Image(systemName: "sportscourt.fill").font(.system(size: 28))
-                Text("RUGBY SWEEPSTAKES").font(.system(size: 23, weight: .bold, design: .rounded)).tracking(3)
+                Text("RUCK OF THE DRAW").font(.system(size: 23, weight: .bold, design: .rounded)).tracking(3)
                 Spacer()
                 Text("FINAL RESULTS").font(.system(size: 19, weight: .bold))
                     .padding(.horizontal, 18).padding(.vertical, 10)
