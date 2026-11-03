@@ -84,6 +84,92 @@ import XCTest
         XCTAssertThrowsError(try store.save(gameID: UUID(), matchID: nil, fixtureName: nil, fixtureDate: nil, teamName: "Ireland", isSample: false, names: Array(repeating: "", count: 23), sourceNote: nil))
         XCTAssertEqual(defaults.data(forKey: "rugby_team_lineup_drafts_v1"), data)
     }
+    func testAmendStarterAndBenchPreservesDrawScoresLinksAndPersistsAudit() throws {
+        let (model, defaults) = makeGame()
+        let root = model.game.enabledStarters[0], bench = model.game.substitutes[0]
+        model.adjustScoringEvent(.tryScore, for: root.id, by: 1)
+        let score = try XCTUnwrap(model.game.scoringHistory?.last)
+        model.makeSubstitution(outgoingID: root.id, incomingID: bench.id)
+        let ids = model.game.teamMembers.map(\.id)
+        let allocations = model.game.sweepstakePlayers.map(\.assignedTeamMemberIds)
+        var names = Dictionary(uniqueKeysWithValues: model.game.teamMembers.map { ($0.id, $0.name) })
+        names[root.id] = "Late Starting Player"; names[bench.id] = "Late Bench Player"
+        XCTAssertTrue(model.amendMatchDayTeam(names: names))
+        XCTAssertEqual(model.game.teamMembers.map(\.id), ids)
+        XCTAssertEqual(model.game.sweepstakePlayers.map(\.assignedTeamMemberIds), allocations)
+        XCTAssertEqual(model.game.pointsForBundle(root.id), 5)
+        XCTAssertEqual(model.getTeamMember(by: root.id)?.linkedSubstituteId, bench.id)
+        XCTAssertEqual(model.game.recordedPlayerName(root.id, at: score.recordedAt), root.name)
+        XCTAssertEqual(model.game.teamAmendments?.count, 2)
+        let loaded = GameViewModel(persistenceService: GamePersistenceService(defaults: defaults))
+        XCTAssertEqual(loaded.getTeamMember(by: root.id)?.name, "Late Starting Player")
+        XCTAssertEqual(loaded.game.teamAmendments?.count, 2)
+        model.adjustScoringEvent(.conversion, for: bench.id, by: 1)
+        XCTAssertEqual(model.game.pointsForBundle(root.id), 7)
+        model.undoScoringEntry(score.id)
+        XCTAssertEqual(model.game.pointsForBundle(root.id), 2)
+        let backup = try backup(from: model, defaults: defaults)
+        let data = try JSONEncoder().encode(backup)
+        XCTAssertNotNil(String(data: data, encoding: .utf8)?.range(of: "Late Starting Player"))
+    }
+    func testAmendAllowsStarterBenchSwapAndKeepsExcludedSlotsExcluded() {
+        let (model, _) = makeGame()
+        let starter = model.game.starters[0], bench = model.game.substitutes[0]
+        let flags = model.game.teamMembers.map(\.isEnabledForGame)
+        var names = Dictionary(uniqueKeysWithValues: model.game.teamMembers.map { ($0.id, $0.name) })
+        names[starter.id] = bench.name; names[bench.id] = starter.name
+        XCTAssertTrue(model.amendMatchDayTeam(names: names))
+        XCTAssertEqual(model.getTeamMember(by: starter.id)?.name, bench.name)
+        XCTAssertEqual(model.getTeamMember(by: bench.id)?.name, starter.name)
+        XCTAssertEqual(model.game.teamMembers.map(\.isEnabledForGame), flags)
+        XCTAssertTrue(model.amendMatchDayTeam(names: names))
+        XCTAssertEqual(model.game.teamAmendments?.count, 2)
+    }
+    func testAmendRejectsInvalidNamesWrongSlotsBeforeDrawAndCompletedGame() {
+        let (model, _) = makeGame()
+        let original = Dictionary(uniqueKeysWithValues: model.game.teamMembers.map { ($0.id, $0.name) })
+        var names = original; let id = model.game.starters[0].id
+        names[id] = "  "
+        XCTAssertFalse(model.amendMatchDayTeam(names: names))
+        names[id] = model.game.substitutes[0].name.uppercased()
+        XCTAssertFalse(model.amendMatchDayTeam(names: names))
+        names = original; names.removeValue(forKey: id); names[UUID()] = "Wrong ID"
+        XCTAssertFalse(model.amendMatchDayTeam(names: names))
+        XCTAssertNil(model.game.teamAmendments)
+        let (beforeDraw, _) = makeGame(draw: false)
+        XCTAssertFalse(beforeDraw.amendMatchDayTeam(names: Dictionary(uniqueKeysWithValues: beforeDraw.game.teamMembers.map { ($0.id, $0.name) })))
+        XCTAssertTrue(model.finishGame())
+        names = original; names[id] = "New Player"
+        XCTAssertFalse(model.amendMatchDayTeam(names: names))
+        XCTAssertEqual(model.getTeamMember(by: id)?.name, original[id])
+    }
+    func testAmendFailedSaveRollsBackNamesAndAudit() throws {
+        let (model, _) = makeGame(); let (defaults, _) = isolatedDefaults()
+        let persistence = FailingPersistence(defaults: defaults)
+        try persistence.saveState(game: model.game, savedGames: [])
+        let other = GameViewModel(persistenceService: persistence)
+        let member = other.game.starters[0]
+        var names = Dictionary(uniqueKeysWithValues: other.game.teamMembers.map { ($0.id, $0.name) })
+        names[member.id] = "Replacement Name"; persistence.fail = true
+        XCTAssertFalse(other.amendMatchDayTeam(names: names))
+        XCTAssertEqual(other.getTeamMember(by: member.id)?.name, member.name)
+        XCTAssertNil(other.game.teamAmendments)
+    }
+    func testLegacyGameWithoutAmendmentsDecodesAndRepeatedAmendmentsKeepHistoricalNames() throws {
+        let (model, _) = makeGame(); let member = model.game.enabledStarters[0]
+        let oldDate = Date().addingTimeInterval(-10)
+        var names = Dictionary(uniqueKeysWithValues: model.game.teamMembers.map { ($0.id, $0.name) })
+        names[member.id] = "First Correction"; XCTAssertTrue(model.amendMatchDayTeam(names: names))
+        let middle = Date()
+        names[member.id] = "Second Correction"; XCTAssertTrue(model.amendMatchDayTeam(names: names))
+        XCTAssertEqual(model.game.recordedPlayerName(member.id, at: oldDate), member.name)
+        XCTAssertEqual(model.game.recordedPlayerName(member.id, at: middle), "First Correction")
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(model.game)) as? [String: Any])
+        json.removeValue(forKey: "teamAmendments")
+        let legacy = try JSONDecoder().decode(Game.self, from: JSONSerialization.data(withJSONObject: json))
+        XCTAssertNil(legacy.teamAmendments)
+    }
+
 }
 private final class FailingPersistence: GamePersistenceService {
     var fail = false

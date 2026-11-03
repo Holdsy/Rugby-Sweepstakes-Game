@@ -30,18 +30,18 @@ struct SweepstakePlayersSetupView: View {
                         } label: {
                             Image(systemName: "chevron.left")
                                 .font(.title3.weight(.semibold))
-                                .foregroundColor(.white)
+                                .foregroundStyle(AppTheme.teal)
                         }
                         .buttonStyle(.plain)
                         
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Saved Participants")
                                 .font(.largeTitle.weight(.bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(AppTheme.teal)
                             
                             Text("Save people for future games and manage their names.")
                                 .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.9))
+                                .foregroundStyle(.secondary)
                         }
                         
                         Spacer()
@@ -140,7 +140,7 @@ struct SweepstakePlayersSetupView: View {
                     } footer: {
                         Text("Enter a name for the new player")
                     }
-                }
+                }.appListSurface()
                 .navigationTitle("Add Participant")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -202,7 +202,7 @@ struct SweepstakePlayerRow: View {
                 onToggleSelection()
             } label: {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(isSelected ? .blue : .gray)
+                    .foregroundColor(isSelected ? AppTheme.teal : .gray)
                     .font(.title3)
             }
             .buttonStyle(.plain)
@@ -228,7 +228,7 @@ struct SweepstakePlayerRow: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(Color.blue)
+                    .background(AppTheme.teal)
                     .cornerRadius(4)
             }
             

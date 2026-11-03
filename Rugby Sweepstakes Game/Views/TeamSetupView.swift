@@ -27,18 +27,18 @@ struct TeamSetupView: View {
                         } label: {
                             Image(systemName: "chevron.left")
                                 .font(.title3.weight(.semibold))
-                                .foregroundColor(.white)
+                                .foregroundStyle(AppTheme.teal)
                         }
                         .buttonStyle(.plain)
                         
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Team Setup")
                                 .font(.largeTitle.weight(.bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(AppTheme.teal)
                             
                             Text(showsDrawPreparation ? "Review your rugby players and replacements." : "Name your starters and replacements. You’ll review draw exclusions later.")
                                 .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.9))
+                                .foregroundStyle(.secondary)
                         }
                         
                         Spacer()
@@ -57,7 +57,7 @@ struct TeamSetupView: View {
                             Label("Team Actions", systemImage: "ellipsis.circle")
                                 .labelStyle(.iconOnly)
                                 .font(.title2.weight(.semibold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(AppTheme.teal)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Team actions")
@@ -68,7 +68,7 @@ struct TeamSetupView: View {
                     if let importedAt = viewModel.englandSquadImportedAt {
                         Text("England squad last imported \(importedAt.formatted(date: .abbreviated, time: .shortened))")
                             .font(.caption)
-                            .foregroundStyle(.white.opacity(0.85))
+                            .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal)
                     }
@@ -98,7 +98,7 @@ struct TeamSetupView: View {
                                     )
                                     .frame(maxWidth: .infinity)
                                 }
-                                .buttonStyle(.borderedProminent)
+                                .buttonStyle(AppPrimaryButtonStyle())
 
                                 Text("Disabled players remain in the squad and can be re-enabled below.")
                                     .font(.caption)
@@ -321,7 +321,7 @@ struct TeamMemberRow: View {
                             .font(.caption)
                         Text(linkedSubstitute.name)
                             .font(.caption)
-                            .foregroundColor(.blue)
+                            .foregroundColor(AppTheme.teal)
                         Button("Unlink") {
                             onUnlinkSubstitute?()
                         }
@@ -434,7 +434,7 @@ struct SubstitutePickerView: View {
                                     
                                     if substitute.id == currentLinkedSubstituteId {
                                         Image(systemName: "checkmark")
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(AppTheme.teal)
                                     }
                                 }
                                 
@@ -443,7 +443,7 @@ struct SubstitutePickerView: View {
                                     HStack(spacing: 4) {
                                         Image(systemName: "arrow.right.circle.fill")
                                             .font(.caption2)
-                                            .foregroundColor(.blue)
+                                            .foregroundColor(AppTheme.teal)
                                         TeamMemberProfileView(
                                             member: starter,
                                             imageSize: 26,
@@ -455,7 +455,7 @@ struct SubstitutePickerView: View {
                         }
                     }
                 }
-            }
+            }.appListSurface()
             .navigationTitle("Select Substitute")
             .navigationBarTitleDisplayMode(.inline)
         }

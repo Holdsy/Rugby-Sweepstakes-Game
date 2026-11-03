@@ -54,3 +54,13 @@ struct MatchSubstitutionEntry: Codable, Identifiable {
         self.isReturn = isReturn; self.outgoingPlayerID = outgoingPlayerID
     }
 }
+
+/// A lineup correction changes the name in a shirt slot, never its allocation identity.
+struct MatchTeamAmendment: Codable, Identifiable {
+    var id = UUID()
+    var recordedAt = Date()
+    let memberID: UUID
+    let shirtNumber: Int
+    let previousName: String
+    let newName: String
+}

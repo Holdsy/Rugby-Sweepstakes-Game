@@ -36,7 +36,7 @@ struct GameHistoryView: View {
                         }.padding(.vertical, 4)
                     }
                 }
-            }
+            }.appListSurface()
             .navigationTitle("History")
             .searchable(text: $search, prompt: "Find match or team")
         }
@@ -64,7 +64,7 @@ struct GameResultsView: View {
             }
             if game.isCompleted, let winner = game.winningParticipants.first {
                 Section {
-                    Label(game.winningParticipants.count == 1 ? "Winner" : "Joint Winners", systemImage: "trophy.fill").font(.headline).foregroundStyle(.orange)
+                    Label(game.winningParticipants.count == 1 ? "Winner" : "Joint Winners", systemImage: "trophy.fill").font(.headline).foregroundStyle(AppTheme.winner)
                     Text(game.winningParticipants.map(\.name).joined(separator: ", ")).font(.title2.bold())
                     Text("\(game.pointsForParticipant(winner.id)) points\(game.winningParticipants.count > 1 ? " each" : "")")
                 }
@@ -103,10 +103,20 @@ struct GameResultsView: View {
                 Section("Scoring record") {
                     ForEach((game.scoringHistory ?? []).reversed()) { entry in
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("\(entry.event.description) · \(game.teamMembers.first { $0.id == entry.teamMemberID }?.name ?? "Player") · \(entry.points > 0 ? "+" : "")\(entry.points) pts")
+                            Text("\(entry.event.description) · \(game.recordedPlayerName(entry.teamMemberID, at: entry.recordedAt)) · \(entry.points > 0 ? "+" : "")\(entry.points) pts")
                             Text("\(entry.recordedAt.formatted(date: .omitted, time: .shortened))\(entry.undoneAt != nil ? " · Undone" : "")")
                                 .font(.caption).foregroundStyle(.secondary)
                         }.strikethrough(entry.undoneAt != nil)
+                    }
+                }
+            }
+            if let amendments = game.teamAmendments, !amendments.isEmpty {
+                Section("Team amendments") {
+                    ForEach(amendments.reversed()) { entry in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("#\(entry.shirtNumber): \(entry.previousName) → \(entry.newName)")
+                            Text(entry.recordedAt.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                 }
             }
@@ -115,7 +125,7 @@ struct GameResultsView: View {
                 Text("The current game is saved to History before switching. Completed results stay read-only until reopened.")
                     .font(.caption).foregroundStyle(.secondary)
             }
-        }
+        }.appListSurface()
         .navigationTitle(game.isCompleted ? "Final Results" : "Saved Game")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)

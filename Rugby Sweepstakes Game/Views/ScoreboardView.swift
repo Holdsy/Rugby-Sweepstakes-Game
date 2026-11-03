@@ -112,7 +112,7 @@ struct ScoreboardView: View {
                             )
                         }
                     }
-                }
+                }.appListSurface()
                 .scrollContentBackground(.hidden)
             }
         }
@@ -139,13 +139,13 @@ struct ScoreboardPlayerRow: View {
             HStack {
                 if isWinner {
                     Image(systemName: "crown.fill")
-                        .foregroundColor(.yellow)
+                        .foregroundColor(AppTheme.winner)
                         .font(.title2)
                 }
                 
                 Text("#\(rank)")
                     .font(.headline)
-                    .foregroundColor(isWinner ? .yellow : .primary)
+                    .foregroundColor(isWinner ? AppTheme.winner : Color.primary)
                 
                 Circle()
                     .fill(player.color.color)
@@ -159,17 +159,17 @@ struct ScoreboardPlayerRow: View {
                 Text("\(totalPoints) pts")
                     .font(isWinner ? .title : .title2)
                     .fontWeight(.bold)
-                    .foregroundColor(isWinner ? .yellow : .blue)
+                    .foregroundColor(isWinner ? AppTheme.winner : AppTheme.teal)
             }
             
             if isWinner {
                 Text("WINNER")
                     .font(.caption)
                     .fontWeight(.bold)
-                    .foregroundColor(.yellow)
+                    .foregroundColor(AppTheme.winner)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(Color.yellow.opacity(0.2))
+                    .background(AppTheme.gold.opacity(0.2))
                     .cornerRadius(6)
             }
             
@@ -201,7 +201,7 @@ struct ScoreboardPlayerRow: View {
             }
         }
         .padding(.vertical, 4)
-        .background(isWinner ? Color.yellow.opacity(0.1) : Color.clear)
+        .background(isWinner ? AppTheme.gold.opacity(0.1) : Color.clear)
         .cornerRadius(8)
     }
 }
@@ -226,7 +226,7 @@ struct FinalResultsView: View {
                     VStack(spacing: 12) {
                         Image(systemName: "trophy.fill")
                             .font(.system(size: 60))
-                            .foregroundColor(.yellow)
+                            .foregroundColor(AppTheme.winner)
                         
                         if winners.count == 1 {
                             Text("Winner")
@@ -260,7 +260,7 @@ struct FinalResultsView: View {
                     }
                     .padding()
                     .frame(maxWidth: .infinity)
-                    .background(Color.yellow.opacity(0.12))
+                    .background(AppTheme.gold.opacity(0.12))
                     .cornerRadius(12)
                     
                     // Final standings
@@ -286,10 +286,10 @@ struct FinalResultsView: View {
                                 
                                 Text("\(viewModel.getTotalPoints(for: player.id)) pts")
                                     .font(.headline)
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppTheme.teal)
                             }
                             .padding()
-                            .background(Color.white.opacity(0.7))
+                            .background(AppTheme.card)
                             .cornerRadius(8)
                         }
                     }
@@ -330,7 +330,7 @@ struct FinalResultsView: View {
                                 }
                             }
                             .padding()
-                            .background(Color.white.opacity(0.7))
+                            .background(AppTheme.card)
                             .cornerRadius(8)
                         }
                     }

@@ -15,6 +15,7 @@ struct Rugby_Sweepstakes_GameApp: App {
         WindowGroup {
             AppRootView()
                 .environmentObject(gameViewModel)
+                .tint(AppTheme.teal)
         }
     }
 }

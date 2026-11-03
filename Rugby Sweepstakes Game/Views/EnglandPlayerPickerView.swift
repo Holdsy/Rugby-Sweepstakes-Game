@@ -110,7 +110,7 @@ struct EnglandPlayerPickerView: View {
                         EnglandPlayerSummary(player: player, fallbackName: player.name, teamName: teamName)
                     }
                 }
-            }
+            }.appListSurface()
             .searchable(text: $searchText, prompt: "Search players")
             .navigationTitle("Choose \(teamName ?? "Squad") Player")
             .navigationBarTitleDisplayMode(.inline)

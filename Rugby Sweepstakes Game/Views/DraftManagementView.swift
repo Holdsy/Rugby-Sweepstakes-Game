@@ -33,7 +33,7 @@ struct DraftManagementView: View {
                         Button("Delete", role: .destructive) { pendingDelete = draft }
                     }
                 }
-            }
+            }.appListSurface()
             .navigationTitle("Team Drafts").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
             .sheet(item: $selectedDraft) { draft in SavedTeamDraftReviewView(draft: draft).environmentObject(viewModel) }

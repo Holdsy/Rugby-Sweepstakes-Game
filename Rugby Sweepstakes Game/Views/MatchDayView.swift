@@ -15,6 +15,8 @@ struct MatchDayView: View {
     @State private var showHistory = false
     @State private var showShare = false
     @State private var showFinish = false
+    @State private var showHalfTime = false
+    @State private var showTeamAmendment = false
     @State private var expandedParticipants: Set<UUID> = []
 
     init(initialSection: MatchDaySection = .score) { _section = State(initialValue: initialSection) }
@@ -72,7 +74,7 @@ struct MatchDayView: View {
                 else if section == .leaderboard { leaderboard }
                 else { allocations }
             }
-        }
+        }.appListSurface()
         .listStyle(.insetGrouped)
         .searchable(text: $search, prompt: section == .score ? "Find rugby player or shirt number" : "Find participant")
         .navigationTitle(viewModel.game.isCompleted ? "Results" : "Match Day")
@@ -88,7 +90,7 @@ struct MatchDayView: View {
                 }
                 .pickerStyle(.segmented)
             }
-            .padding(.horizontal).padding(.vertical, 10).background(.regularMaterial)
+            .padding(.horizontal).padding(.vertical, 10).background(AppTheme.card)
         }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
@@ -96,6 +98,8 @@ struct MatchDayView: View {
                 Button { showShare = true } label: { Image(systemName: "square.and.arrow.up") }.accessibilityLabel("Share \(section.rawValue)")
                 if !viewModel.game.isCompleted && viewModel.game.isDrawComplete {
                     Menu {
+                        Button { showTeamAmendment = true } label: { Label("Amend Match-Day Team", systemImage: "person.crop.rectangle.badge.pencil") }
+                        Button { showHalfTime = true } label: { Label("Share Half-Time Update", systemImage: "square.and.arrow.up") }
                         Button { showFinish = true } label: { Label("Finish & Save Game", systemImage: "checkmark.seal") }
                     } label: { Image(systemName: "ellipsis.circle") }
                     .accessibilityLabel("Game actions")
@@ -114,6 +118,8 @@ struct MatchDayView: View {
         }
         .sheet(isPresented: $showSubstitution) { MatchSubstitutionSheet().environmentObject(viewModel) }
         .sheet(isPresented: $showHistory) { MatchActivityView().environmentObject(viewModel) }
+        .sheet(isPresented: $showTeamAmendment) { AmendMatchDayTeamView().environmentObject(viewModel) }
+        .sheet(isPresented: $showHalfTime) { ResultsShareView(game: viewModel.game, kind: .halfTime) }
         .sheet(isPresented: $showShare) {
             if section == .allocations { DrawShareView(game: viewModel.game, englandSquad: viewModel.englandSquad) }
             else if viewModel.game.isCompleted { ResultsShareView(game: viewModel.game) }
@@ -139,7 +145,7 @@ struct MatchDayView: View {
             Section {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("\(entry.event.description) · \(viewModel.getTeamMember(by: entry.teamMemberID)?.name ?? "Player")").font(.subheadline)
+                        Text("\(entry.event.description) · \(viewModel.game.recordedPlayerName(entry.teamMemberID, at: entry.recordedAt))").font(.subheadline)
                         Text("\(entry.points > 0 ? "+" : "")\(entry.points) pts · \(entry.recordedAt.formatted(date: .omitted, time: .shortened))")
                             .font(.caption).foregroundStyle(.secondary)
                     }
@@ -180,6 +186,13 @@ struct MatchDayView: View {
     }
 
     @ViewBuilder private var leaderboard: some View {
+        if !viewModel.game.isCompleted {
+            Section {
+                Button { showHalfTime = true } label: {
+                    Label("Share Half-Time Update", systemImage: "square.and.arrow.up")
+                }
+            }
+        }
         Section {
             Text(viewModel.game.isCompleted ? "Final standings · equal scores share a rank." : "Current standings · leaders are confirmed when the game finishes.")
                 .font(.caption).foregroundStyle(.secondary)
@@ -289,7 +302,7 @@ private struct RecordScoreSheet: View {
                         Text("Open scoring history to undo a specific recorded score.").font(.caption).foregroundStyle(.secondary)
                     }
                 }
-            }
+            }.appListSurface()
             .navigationTitle("Record Score").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
         }
@@ -337,7 +350,7 @@ private struct MatchSubstitutionSheet: View {
                         }
                     } header: { Text("Current replacements") } footer: { Text("Select any player currently on field, including a replacement. Returning an original starter keeps all earlier points with their original allocation.") }
                 }
-            }
+            }.appListSurface()
             .navigationTitle("Substitution").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
         }
@@ -365,7 +378,7 @@ private struct MatchActivityView: View {
                     ForEach((viewModel.game.scoringHistory ?? []).reversed()) { entry in
                         VStack(alignment: .leading, spacing: 5) {
                             HStack {
-                                Text("\(entry.event.description) · \(viewModel.getTeamMember(by: entry.teamMemberID)?.name ?? "Player")")
+                                Text("\(entry.event.description) · \(viewModel.game.recordedPlayerName(entry.teamMemberID, at: entry.recordedAt))")
                                 Spacer()
                                 Text("\(entry.points > 0 ? "+" : "")\(entry.points)").monospacedDigit()
                             }
@@ -385,11 +398,21 @@ private struct MatchActivityView: View {
                     }
                     if (viewModel.game.scoringHistory ?? []).isEmpty { Text("No new scores recorded yet.").foregroundStyle(.secondary) }
                 }
+                if let amendments = viewModel.game.teamAmendments, !amendments.isEmpty {
+                    Section("Team amendments") {
+                        ForEach(amendments.reversed()) { entry in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("#\(entry.shirtNumber): \(entry.previousName) → \(entry.newName)")
+                                Text(entry.recordedAt.formatted(date: .abbreviated, time: .shortened)).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
                 Section("Substitutions") {
                     ForEach((viewModel.game.substitutionHistory ?? []).reversed()) { entry in
-                        let starter = viewModel.getTeamMember(by: entry.starterID)?.name ?? "Starter"
-                        let replacement = viewModel.getTeamMember(by: entry.replacementID)?.name ?? "Replacement"
-                        let outgoing = viewModel.getTeamMember(by: entry.outgoingPlayerID ?? entry.starterID)?.name ?? starter
+                        let starter = viewModel.game.recordedPlayerName(entry.starterID, at: entry.recordedAt)
+                        let replacement = viewModel.game.recordedPlayerName(entry.replacementID, at: entry.recordedAt)
+                        let outgoing = viewModel.game.recordedPlayerName(entry.outgoingPlayerID ?? entry.starterID, at: entry.recordedAt)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(entry.isReturn ? "\(starter) returned · \(replacement) off" : "\(replacement) on · \(outgoing) off")
                             Text(entry.recordedAt.formatted(date: .omitted, time: .shortened)).font(.caption).foregroundStyle(.secondary)
@@ -397,7 +420,7 @@ private struct MatchActivityView: View {
                     }
                     if (viewModel.game.substitutionHistory ?? []).isEmpty { Text("No new substitutions recorded yet.").foregroundStyle(.secondary) }
                 }
-            }
+            }.appListSurface()
             .navigationTitle("Scoring History").navigationBarTitleDisplayMode(.inline)
             .confirmationDialog("Undo this recorded score?", isPresented: Binding(get: { correctionID != nil }, set: { if !$0 { correctionID = nil } }), titleVisibility: .visible) {
                 Button("Undo Selected Score", role: .destructive) {
@@ -406,6 +429,80 @@ private struct MatchActivityView: View {
                 }
             } message: { Text("The selected entry will be reversed for its original participant. Other scores and substitutions stay unchanged.") }
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+        }
+    }
+}
+
+/// The draft is local to this sheet; cancel never changes the active team.
+struct AmendMatchDayTeamView: View {
+    @EnvironmentObject private var viewModel: GameViewModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var names: [UUID: String] = [:]
+    @State private var originalNames: [UUID: String] = [:]
+    @State private var confirmSave = false
+    @State private var error: String?
+    private var changedCount: Int { names.filter { $0.value.trimmingCharacters(in: .whitespacesAndNewlines) != originalNames[$0.key] }.count }
+    private var valid: Bool {
+        let values = names.values.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let normalized = values.map { $0.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_GB")).split(whereSeparator: \.isWhitespace).joined(separator: " ") }
+        return values.count == 23 && values.allSatisfy { !$0.isEmpty && $0.count <= 120 } && Set(normalized).count == values.count
+    }
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text("Correct late lineup changes without redrawing. Each shirt slot keeps its participant, points and exclusions.")
+                    Text("If a bench player moves into the starting XV, swap both names. For a substitution during play, use Make Substitution instead.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    if viewModel.game.teamMembers.contains(where: { $0.points != 0 }) {
+                        Text("Points already recorded remain with their existing slots. Earlier scoring-history entries retain the names used at the time.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                slots(viewModel.game.starters, title: "Starting XV")
+                slots(viewModel.game.substitutes, title: "Replacements")
+                if !valid { Section { Text("Enter 23 distinct names, with no blank names (maximum 120 characters each).").foregroundStyle(.orange) } }
+                if let error { Section { Text(error).foregroundStyle(.red) } }
+            }.appListSurface()
+            .navigationTitle("Amend Match-Day Team").navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .safeAreaInset(edge: .bottom) {
+                Button { confirmSave = true } label: {
+                    Text("Save \(changedCount) \(changedCount == 1 ? "Change" : "Changes")").frame(maxWidth: .infinity)
+                }.buttonStyle(AppPrimaryButtonStyle()).disabled(!valid || changedCount == 0 || viewModel.game.isCompleted)
+                    .padding().background(AppTheme.card)
+            }
+            .onAppear {
+                guard names.isEmpty else { return }
+                names = Dictionary(uniqueKeysWithValues: viewModel.game.teamMembers.map { ($0.id, $0.name) })
+                originalNames = names
+            }
+            .confirmationDialog("Save team amendments?", isPresented: $confirmSave, titleVisibility: .visible) {
+                Button("Save Changes") {
+                    guard viewModel.amendMatchDayTeam(names: names) else {
+                        error = "The changes could not be saved. Check the names and try again."; return
+                    }
+                    dismiss()
+                }
+            } message: { Text("The draw and points stay unchanged. Changes are recorded in history. Share the updated draw to let participants know.") }
+        }
+    }
+    private func slots(_ members: [TeamMember], title: String) -> some View {
+        Section(title) {
+            ForEach(members) { member in
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Text("#\((viewModel.game.teamMembers.firstIndex { $0.id == member.id } ?? 0) + 1)").monospacedDigit().foregroundStyle(AppTheme.teal).frame(width: 38, alignment: .leading)
+                        TextField("Player name", text: Binding(get: { names[member.id] ?? member.name }, set: { names[member.id] = $0 }))
+                            .autocorrectionDisabled().accessibilityLabel("Shirt \((viewModel.game.teamMembers.firstIndex { $0.id == member.id } ?? 0) + 1) player name")
+                    }
+                    if let owner = viewModel.participant(forBundle: viewModel.scoringBundle(for: member.id)) {
+                        Text("Allocation: \(owner.name)").font(.caption).foregroundStyle(.secondary)
+                    } else if member.isStarter {
+                        Text("Excluded from the draw").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
         }
     }
 }

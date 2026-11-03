@@ -23,6 +23,7 @@ struct Game: Identifiable, Codable {
     var scoringBaseline: [ScoringBaseline]?
     var scoringHistory: [MatchScoreEntry]?
     var substitutionHistory: [MatchSubstitutionEntry]?
+    var teamAmendments: [MatchTeamAmendment]?
     var isDrawComplete: Bool
     
     init(

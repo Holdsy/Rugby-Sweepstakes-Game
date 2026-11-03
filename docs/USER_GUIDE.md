@@ -8,7 +8,9 @@ The **Current Game** tab is your home screen. Choose **Start a New Game** to arc
 
 The match title uses the two teams and date when fixture details are available. You follow one side's players for the sweepstake.
 
-<img src="screenshots/home-and-drafts.png" width="300" alt="Home screen showing an unfinished Ireland team and setup steps">
+<img src="screenshots/home-and-drafts.png" width="300" alt="Home screen showing an unfinished sample team and setup steps">
+
+<img src="screenshots/setup.png" width="300" alt="Guided Match and Team setup with fixture selection and finalisation">
 
 ## 2. Find the match and finalise the team
 
@@ -25,7 +27,7 @@ Check all names and shirt numbers, including the eight bench players. Choose **U
 
 If the match exists but no lineup is available, wait for publication or use manual/photo entry. Finding a fixture does not guarantee a published lineup.
 
-<img src="screenshots/team-finalisation.png" width="300" alt="Team finalisation screen with photo import, editable names and Use This Team">
+<img src="screenshots/team-finalisation.png" width="300" alt="Team finalisation screen with import options and Use This Team">
 
 ## 3. Save an unfinished team
 
@@ -39,7 +41,17 @@ Use **Participants** to choose the people taking part. Saved people are reusable
 
 You need at least two participants, and the number of enabled starters must divide equally between them. In **Review & Draw**, exclude starters if necessary. For example, six participants can each receive two of 12 enabled starters, leaving three excluded from the draw. Check exclusions before drawing.
 
-Run the draw once ready. Team and participant selection are then locked for that draw. Open **View & Share Allocations** to review who received each player.
+Run the draw once ready. Allocations and participant selection are then locked for that draw; late player-name changes use Amend Match-Day Team. Open **View & Share Allocations** to review who received each player.
+
+## Late team changes after the draw
+
+Open **Match Day → Game actions (•••) → Amend Match-Day Team**. Edit the names beside the shirt numbers, then save and confirm. If a bench player becomes a starter, swap both names before saving. All 23 names must be distinct and nonblank.
+
+The existing shirt slots, participant allocations, exclusions, points and substitution links remain unchanged. Amendments are recorded in scoring history and saved-game history, including previous and new names. Cancel leaves the team unchanged. Share the updated draw to tell participants about the new lineup.
+
+Use this for lineup corrections. For a change during play, use **Make Substitution** to track the replacement separately. If scores already exist, they stay with their original slots; historical scoring entries retain the names used at the time. Completed games must be reopened before amendment.
+
+<img src="screenshots/amend-team.png" width="300" alt="Amend Match-Day Team showing shirt numbers and unchanged allocation owners">
 
 ## 5. Share the draw
 
@@ -47,7 +59,6 @@ Open the draw's share preview and choose **Share Image**. In the iPhone share sh
 
 <img src="screenshots/share-draw.png" width="300" alt="Draw image preview showing six sample participants and their player portraits">
 
-This preview was captured before the rename; current images use the Ruck of the Draw heading.
 
 ## 6. Record points and substitutions
 
@@ -66,13 +77,23 @@ When someone is replaced, choose the outgoing player and their replacement. The 
 
 Expand a participant on the leaderboard to see the starter, replacements and points each contributed. In this sample, Ellis Genge and Luke Cowan-Dickie each contributed five points to the same allocation, for ten in total.
 
-<img src="screenshots/replacement-points.png" width="300" alt="Expanded leaderboard allocation showing five starter points plus five replacement points">
+<img src="screenshots/match-day.png" width="300" alt="Match Day showing a replacement in the original starter position, scoring and substitution controls">
 
 ## 7. Check the live match scoreboard
 
 For a linked Highlightly fixture, refresh the live scoreboard to see the provider's team scores and match status. Check the last-updated information, especially after an error or while offline. The last known score may remain visible when a refresh fails.
 
 The live match score is separate from the sweepstake leaderboard. Refreshing it does not add scoring events or substitutions to your game. The organiser records those manually.
+
+## Half-time update
+
+During an active game, open **Match Day → Leaderboard → Share Half-Time Update**, or choose it from the **Game actions** menu. The preview shows the match, date and complete current standings in the teal-and-gold style. Tap **Share Image**, then choose WhatsApp and your recipient. Text sharing is also available.
+
+The update uses points recorded so far and does not finish or lock the game. Continue scoring normally in the second half. The image marks these as current standings rather than declaring a winner.
+
+A match score is included only if the saved provider response belongs to this fixture, is no more than two minutes old and is explicitly marked half-time. Refresh the Match Day scoreboard before opening the preview. If that score is unavailable, the image still shares the sweepstake standings.
+
+<img src="screenshots/half-time-update.png" width="300" alt="Half-time image preview with current sweepstake standings and WhatsApp sharing controls">
 
 ## 8. Finish and share results
 
@@ -82,7 +103,6 @@ Completed games are protected from accidental scoring edits. Reopen a game for c
 
 <img src="screenshots/share-results.png" width="300" alt="Final results sharing preview showing the winner and ranked participants">
 
-This screenshot also predates the new sharing-image heading.
 
 ## 9. Back up or move devices
 
@@ -93,6 +113,12 @@ The backup includes the current game, saved games, participants, unfinished team
 To restore, select **Choose Backup File**, inspect the backup and confirm restoration. Restore **replaces** existing saved games and settings rather than merging them. A local recovery copy is kept before replacement; export it if you need a separate copy. Restoring does not change an existing API key. On a new device, connect Highlightly separately.
 
 <img src="screenshots/backup-restore.png" width="300" alt="Backup and restore screen showing export, file selection and a before-restore recovery copy">
+
+## Appearance
+
+The app uses deep teal controls, gold primary actions and matching cards across setup, match day, history and sharing. It follows your device's light or dark appearance. Shared images retain a consistent teal-and-gold design in either mode.
+
+<img src="screenshots/dark-mode.png" width="300" alt="Match Day in dark mode with teal controls">
 
 ## Common questions
 

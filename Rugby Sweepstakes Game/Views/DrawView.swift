@@ -60,7 +60,7 @@ struct DrawView: View {
                                     Label("View Draw Results", systemImage: "list.bullet.clipboard")
                                         .frame(maxWidth: .infinity)
                                         .padding()
-                                        .background(Color.blue)
+                                        .background(AppTheme.teal)
                                         .foregroundColor(.white)
                                         .cornerRadius(10)
                                 }
@@ -73,13 +73,13 @@ struct DrawView: View {
                                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                             .frame(maxWidth: .infinity)
                                             .padding()
-                                            .background(Color.blue)
+                                            .background(AppTheme.teal)
                                             .cornerRadius(10)
                                     } else {
                                         Label("Run Draw Again", systemImage: "arrow.clockwise.circle")
                                             .frame(maxWidth: .infinity)
                                             .padding()
-                                            .background(viewModel.game.canRunDraw ? Color.blue : Color.gray)
+                                            .background(viewModel.game.canRunDraw ? AppTheme.teal : Color.gray)
                                             .foregroundColor(.white)
                                             .cornerRadius(10)
                                     }
@@ -95,7 +95,7 @@ struct DrawView: View {
                             VStack(spacing: 20) {
                                 Image(systemName: "shuffle")
                                     .font(.system(size: 60))
-                                    .foregroundColor(.blue)
+                                    .foregroundColor(AppTheme.teal)
                                 
                                 Text("Random Draw")
                                     .font(.title)
@@ -169,13 +169,13 @@ struct DrawView: View {
                                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                                             .frame(maxWidth: .infinity)
                                             .padding()
-                                            .background(Color.blue)
+                                            .background(AppTheme.teal)
                                             .cornerRadius(10)
                                     } else {
                                         Label("Run Full Draw", systemImage: "shuffle")
                                             .frame(maxWidth: .infinity)
                                             .padding()
-                                            .background(viewModel.game.canRunDraw ? Color.blue : Color.gray)
+                                            .background(viewModel.game.canRunDraw ? AppTheme.teal : Color.gray)
                                             .foregroundColor(.white)
                                             .cornerRadius(10)
                                     }

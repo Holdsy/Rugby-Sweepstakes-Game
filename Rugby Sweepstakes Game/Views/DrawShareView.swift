@@ -38,16 +38,16 @@ struct DrawShareView: View {
                     }
                 }.padding(.vertical)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(AppTheme.canvas)
             .navigationTitle("Share Your Draw").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 10) {
                     Button { shareImage = true } label: {
                         Label("Share Image", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity)
-                    }.buttonStyle(.borderedProminent).controlSize(.large).disabled(preparing || image == nil)
+                    }.buttonStyle(AppPrimaryButtonStyle()).controlSize(.large).disabled(preparing || image == nil)
                     Button("Share as Text") { shareText = true }
-                }.padding().background(.regularMaterial)
+                }.padding().background(AppTheme.card)
             }
             .task { await prepare() }
             .sheet(isPresented: $shareImage) { if let image { ShareSheet(activityItems: [image]) } }
@@ -146,7 +146,7 @@ struct DrawSharePoster: View {
             }.foregroundStyle(.white).padding(.top, 2)
         }
         .padding(42).frame(width: 1080, alignment: .leading)
-        .background(LinearGradient(colors: [Color(red: 0.04, green: 0.24, blue: 0.25), Color(red: 0.04, green: 0.11, blue: 0.19)], startPoint: .topLeading, endPoint: .bottomTrailing))
+        .background(AppTheme.primaryGradient)
     }
     private func participantCard(_ participant: SweepstakePlayer) -> some View {
         VStack(alignment: .leading, spacing: 16) {

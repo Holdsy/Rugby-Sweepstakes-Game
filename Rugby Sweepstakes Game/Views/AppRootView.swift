@@ -19,8 +19,8 @@ struct AppRootView: View {
             if viewModel.storageWritesBlocked {
                 VStack {
                     ContentUnavailableView("Saved Games Unavailable", systemImage: "externaldrive.badge.exclamationmark", description: Text("Your existing save has been preserved. You can restore a previously exported backup."))
-                    Button("Backup & Restore") { showRecovery = true }.buttonStyle(.borderedProminent)
-                }.padding().background(.regularMaterial)
+                    Button("Backup & Restore") { showRecovery = true }.buttonStyle(AppPrimaryButtonStyle())
+                }.padding().background(AppTheme.card)
             }
         }
         .sheet(isPresented: $showRecovery) { BackupRestoreView().environmentObject(viewModel) }
@@ -67,7 +67,7 @@ private struct ParticipantsLibraryView: View {
                     }
                 }
                 if viewModel.masterPlayerList.isEmpty { Text("Add a participant to get started.").foregroundStyle(.secondary) }
-            }
+            }.appListSurface()
             .navigationTitle("People")
             .toolbar { Button { showAdd = true } label: { Label("Add Participant", systemImage: "plus") } }
             .alert("Add Participant", isPresented: $showAdd) {

@@ -35,7 +35,7 @@ struct HomeView: View {
                                 Text("Following \(team)").font(.subheadline)
                             }
                         }
-                        .foregroundStyle(.white)
+                        .foregroundStyle(AppTheme.teal)
                         if let draft = currentDrafts.first {
                             GlassCard {
                                 VStack(alignment: .leading, spacing: 12) {
@@ -44,7 +44,7 @@ struct HomeView: View {
                                     Text("\(draft.teamName) · \(draft.namedCount) of 23 named").font(.subheadline).foregroundStyle(.secondary)
                                     Button { selectedDraft = draft } label: {
                                         Label("Resume Draft", systemImage: "pencil").frame(maxWidth: .infinity)
-                                    }.buttonStyle(.borderedProminent).controlSize(.large)
+                                    }.buttonStyle(AppPrimaryButtonStyle()).controlSize(.large)
                                 }
                             }
                         }
@@ -54,17 +54,17 @@ struct HomeView: View {
                         Button { showResetConfirmation = true } label: {
                             Label("Start a New Game", systemImage: "plus.circle").frame(maxWidth: .infinity)
                         }
-                        .buttonStyle(.borderedProminent).controlSize(.large)
+                        .buttonStyle(AppPrimaryButtonStyle()).controlSize(.large)
                         if !drafts.drafts.isEmpty {
                             Button { showDrafts = true } label: {
                                 Label("Manage Team Drafts (\(drafts.drafts.count))", systemImage: "doc.on.doc").frame(maxWidth: .infinity)
-                            }.buttonStyle(.bordered).tint(.white)
+                            }.buttonStyle(.bordered).tint(AppTheme.teal)
                         }
                         Button { showBackup = true } label: {
                             Label("Backup & Restore", systemImage: "externaldrive").frame(maxWidth: .infinity)
-                        }.buttonStyle(.bordered).tint(.white)
+                        }.buttonStyle(.bordered).tint(AppTheme.teal)
                         Text("Your current game is saved to History before a new one starts.")
-                            .font(.caption).foregroundStyle(.white.opacity(0.85))
+                            .font(.caption).foregroundStyle(.secondary)
                     }
                     .padding()
                     .padding(.bottom, 16)
@@ -103,7 +103,7 @@ struct HomeView: View {
                     Label(nextStep == 2 ? "Review & Run Draw" : "Continue Setup", systemImage: "arrow.right")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent).controlSize(.large)
+                .buttonStyle(AppPrimaryButtonStyle()).controlSize(.large)
             }
         }
     }
@@ -137,7 +137,7 @@ struct HomeView: View {
                 NavigationLink { GameResultsView(game: viewModel.game) } label: {
                     Label("View & Share Final Results", systemImage: "trophy.fill").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent).controlSize(.large)
+                .buttonStyle(AppPrimaryButtonStyle()).controlSize(.large)
                 Text("Open results to review allocations or reopen this game for corrections.").font(.caption).foregroundStyle(.secondary)
             }
         }
@@ -154,7 +154,7 @@ struct HomeView: View {
                     Label(hasScores ? "Continue Scoring" : "Start Scoring", systemImage: "plus.circle.fill")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent).controlSize(.large)
+                .buttonStyle(AppPrimaryButtonStyle()).controlSize(.large)
                 NavigationLink { MatchDayView(initialSection: .leaderboard) } label: {
                     Label("Leaderboard", systemImage: "trophy").frame(maxWidth: .infinity)
                 }
@@ -170,8 +170,8 @@ struct HomeView: View {
                 }
             }
         }
-        Text("Your team and participant selection are locked for this draw. Start a new game to change them.")
-            .font(.caption).foregroundStyle(.white.opacity(0.85))
+        Text("Allocations and participants are locked for this draw. For late lineup changes, open Match Day → Game actions → Amend Match-Day Team.")
+            .font(.caption).foregroundStyle(.secondary)
     }
 }
 

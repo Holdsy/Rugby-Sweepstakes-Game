@@ -109,7 +109,7 @@ struct MatchdayImportView: View {
                         Text("Competition and search filters apply to fixtures loaded so far.").font(.caption).foregroundStyle(.secondary)
                     }
                 }
-            }
+            }.appListSurface()
             .navigationTitle("Choose Fixture").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
@@ -210,7 +210,7 @@ private struct FixtureTeamsView: View {
                     Button("Continue with Manual Team Entry") { details = reference }
                 }
             }
-        }
+        }.appListSurface()
         .navigationTitle("Choose Team").navigationBarTitleDisplayMode(.inline)
         .task { if isSample { details = reference } else { await load() } }
     }
@@ -308,7 +308,7 @@ private struct MatchdayLineupReview: View {
                     Text("Lineup not currently available from Highlightly for this team. Try refreshing, import a photo or enter the names below.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
-                if locked { Text("Your team is locked after the draw. Start a new game to change the lineup.").foregroundStyle(.orange) }
+                if locked { Text("Imports are locked after the draw. For late lineup changes, use Match Day → Game actions → Amend Match-Day Team.").foregroundStyle(.orange) }
                 if let sourceNote { Text(sourceNote).font(.caption).foregroundStyle(.secondary) }
                 if let message { Text(message).font(.subheadline).foregroundStyle(.orange) }
             }
@@ -339,7 +339,7 @@ private struct MatchdayLineupReview: View {
                 lineupSection("Starting XV", range: 0..<15)
                 lineupSection("Replacements", range: 15..<23)
             }.disabled(locked || busy)
-        }
+        }.appListSurface()
         .navigationTitle(teamName).navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
@@ -367,12 +367,12 @@ private struct MatchdayLineupReview: View {
                 Button("Save Draft & Close") { if saveDraft() { dismiss() } }
                     .disabled(locked || busy)
                 Button("Use This Team") { confirmImport = true }
-                    .buttonStyle(.borderedProminent).controlSize(.large)
+                    .buttonStyle(AppPrimaryButtonStyle()).controlSize(.large)
                     .frame(maxWidth: .infinity)
                     .disabled(missing > 0 || locked || busy)
                 Text(missing > 0 ? "Complete all 15 starters and 8 replacements." : "All 23 names ready — check the lineup before saving.")
                     .font(.caption).foregroundStyle(.secondary)
-            }.padding().frame(maxWidth: .infinity).background(.regularMaterial)
+            }.padding().frame(maxWidth: .infinity).background(AppTheme.card)
         }
         .confirmationDialog("Use this team for your sweepstake?", isPresented: $confirmImport, titleVisibility: .visible) {
             Button("Use This Team") {
@@ -565,7 +565,7 @@ struct HighlightlyConnectionView: View {
                 if connected {
                     Button("Remove Saved Key", role: .destructive) { confirmRemoval = true }
                 }
-            }
+            }.appListSurface()
             .navigationTitle("Highlightly Connection").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { key = ""; dismiss() } } }
             .confirmationDialog("Remove this device’s API key?", isPresented: $confirmRemoval, titleVisibility: .visible) {

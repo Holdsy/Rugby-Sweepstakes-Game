@@ -23,6 +23,8 @@ Coverage includes:
 - Backup export/restore, credential exclusion, unsupported/corrupt/oversized files, recovery copies and saved-record validation.
 - Scoreboard caching, stale/missing scores, offline/auth/quota/server failures and fixture-switch races.
 - Conservative photo matching, transparent-image preference, photo-page parsing and persisted photo settings.
+- Half-time image rendering, score freshness checks and continued second-half scoring.
+- Team amendments, atomic starter/bench swaps, unchanged allocations and exclusions, audit persistence, historical names, legacy decoding and save-failure rollback.
 - Draw/results image rendering, long participant names, tied winners, displayed match dates and app branding.
 
 Still test on a physical iPhone: WhatsApp delivery, Files/iCloud permissions, visual accessibility at large text sizes and the accuracy/timeliness of real provider data. Those external integrations are intentionally not simulated as successful deliveries by the unit tests.

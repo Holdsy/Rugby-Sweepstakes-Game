@@ -1,13 +1,34 @@
 import SwiftUI
 import UIKit
 
+enum ResultsShareKind {
+    case final, halfTime
+    var isHalfTime: Bool { self == .halfTime }
+    var badge: String { isHalfTime ? "HALF-TIME UPDATE" : "FINAL RESULTS" }
+    var title: String { isHalfTime ? "Share Half-Time Update" : "Share Final Results" }
+    func text(for game: Game) -> String {
+        guard isHalfTime else { return game.resultsShareText }
+        return (["Ruck of the Draw — Half-Time Update", game.displayTitle, "Current sweepstake standings"] +
+            game.rankedParticipants.map { "\(game.participantRank($0.id)). \($0.name): \(game.pointsForParticipant($0.id)) pts" } +
+            ["Based on points recorded so far · Second half still to play"]).joined(separator: "\n")
+    }
+    /// Never label a full-time or stale live score as the half-time result.
+    static func halfTimeScore(_ snapshot: LiveMatchSnapshot?, matchID: Int?, now: Date = Date()) -> LiveMatchSnapshot? {
+        guard let snapshot, snapshot.matchID == matchID, snapshot.scorePair != nil, !snapshot.isStale(at: now) else { return nil }
+        let status = snapshot.statusText.lowercased().replacingOccurrences(of: "-", with: "").replacingOccurrences(of: " ", with: "")
+        return ["ht", "halftime"].contains(status) ? snapshot : nil
+    }
+}
+
 struct ResultsShareView: View {
     let game: Game
+    var kind: ResultsShareKind = .final
     @Environment(\.dismiss) private var dismiss
     @State private var image: UIImage?
     @State private var error: String?
     @State private var shareImage = false
     @State private var shareText = false
+    @StateObject private var matchScore = LiveMatchScoreModel()
 
     var body: some View {
         NavigationStack {
@@ -16,32 +37,38 @@ struct ResultsShareView: View {
                     if let image {
                         Image(uiImage: image).resizable().scaledToFit()
                             .clipShape(RoundedRectangle(cornerRadius: 12))
-                            .accessibilityLabel("Final results image for \(game.displayTitle), including the winners and all final standings")
+                            .accessibilityLabel("\(kind.badge) image for \(game.displayTitle), including all participant standings")
                     }
                     if let error { Text(error).foregroundStyle(.orange) }
-                    Text("Share Image opens the iPhone share sheet. Choose WhatsApp or another app to send your final results.")
+                    Text(kind.isHalfTime ? "Share the points recorded so far. This keeps your game open for second-half scoring." : "Share Image opens the iPhone share sheet. Choose WhatsApp or another app to send your final results.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    if kind.isHalfTime {
+                        Text("A match score is included only when the latest match score is recent and marked half-time. Refresh the Match Day scoreboard before opening this preview.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Text("Choose WhatsApp from the iPhone share sheet to send the image.")
                         .font(.caption).foregroundStyle(.secondary)
                 }.padding()
             }
-            .background(Color(.systemGroupedBackground))
-            .navigationTitle("Share Final Results").navigationBarTitleDisplayMode(.inline)
+            .background(AppTheme.canvas)
+            .navigationTitle(kind.title).navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 10) {
                     Button { shareImage = true } label: {
                         Label("Share Image", systemImage: "square.and.arrow.up").frame(maxWidth: .infinity)
-                    }.buttonStyle(.borderedProminent).controlSize(.large).disabled(image == nil)
-                    Button("Share as Text") { shareText = true }.disabled(!game.isCompleted)
-                }.padding().background(.regularMaterial)
+                    }.buttonStyle(AppPrimaryButtonStyle()).controlSize(.large).disabled(image == nil)
+                    Button("Share as Text") { shareText = true }.disabled(!game.isCompleted && !kind.isHalfTime)
+                }.padding().background(AppTheme.card)
             }
-            .task { render() }
+            .task { matchScore.configure(matchID: game.providerMatchID); render() }
             .sheet(isPresented: $shareImage) { if let image { ShareSheet(activityItems: [image]) } }
-            .sheet(isPresented: $shareText) { ShareSheet(activityItems: [game.resultsShareText]) }
+            .sheet(isPresented: $shareText) { ShareSheet(activityItems: [kind.text(for: game)]) }
         }
     }
     @MainActor private func render() {
-        guard game.isCompleted else { error = "Finish and save this game before sharing final results."; return }
-        let renderer = ImageRenderer(content: ResultsSharePoster(game: game).environment(\.colorScheme, .light))
+        guard kind.isHalfTime ? (game.isDrawComplete && !game.isCompleted) : game.isCompleted else { error = kind.isHalfTime ? "Half-time updates are available during an active game after the draw." : "Finish and save this game before sharing final results."; return }
+        let renderer = ImageRenderer(content: ResultsSharePoster(game: game, kind: kind, matchScore: kind.isHalfTime ? ResultsShareKind.halfTimeScore(matchScore.snapshot, matchID: game.providerMatchID) : nil).environment(\.colorScheme, .light))
         renderer.proposedSize = ProposedViewSize(width: 1080, height: nil)
         renderer.scale = 1
         image = renderer.uiImage
@@ -52,15 +79,17 @@ struct ResultsShareView: View {
 /// Uses the saved game's calculations so sharing cannot change ranks, ties or historical results.
 struct ResultsSharePoster: View {
     let game: Game
+    var kind: ResultsShareKind = .final
+    var matchScore: LiveMatchSnapshot? = nil
     private let ink = Color(red: 0.06, green: 0.15, blue: 0.22)
-    private let gold = Color(red: 1, green: 0.79, blue: 0.32)
+    private let gold = AppTheme.gold
     var body: some View {
         VStack(alignment: .leading, spacing: 28) {
             HStack(spacing: 14) {
                 Image(systemName: "sportscourt.fill").font(.system(size: 28))
                 Text("RUCK OF THE DRAW").font(.system(size: 23, weight: .bold, design: .rounded)).tracking(3)
                 Spacer()
-                Text("FINAL RESULTS").font(.system(size: 19, weight: .bold))
+                Text(kind.badge).font(.system(size: 19, weight: .bold))
                     .padding(.horizontal, 18).padding(.vertical, 10)
                     .background(.white.opacity(0.15), in: Capsule())
             }.foregroundStyle(.white.opacity(0.9))
@@ -71,7 +100,16 @@ struct ResultsSharePoster: View {
                     Text("Following \(team)").font(.system(size: 23, weight: .medium)).foregroundStyle(.white.opacity(0.8))
                 }
             }.foregroundStyle(.white)
-            if let winner = game.winningParticipants.first {
+            if kind.isHalfTime, let score = matchScore, let pair = score.scorePair {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("HALF-TIME MATCH SCORE").font(.system(size: 21, weight: .bold)).tracking(2).foregroundStyle(gold)
+                    Text("\(score.home)  \(pair[0]) – \(pair[1])  \(score.away)")
+                        .font(.system(size: 36, weight: .bold, design: .rounded)).foregroundStyle(.white)
+                        .fixedSize(horizontal: false, vertical: true)
+                }.padding(26).frame(maxWidth: .infinity, alignment: .leading)
+                    .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 24))
+            }
+            if !kind.isHalfTime, let winner = game.winningParticipants.first {
                 VStack(alignment: .leading, spacing: 16) {
                     Label(game.winningParticipants.count == 1 ? "WINNER" : "JOINT WINNERS", systemImage: "trophy.fill")
                         .font(.system(size: 24, weight: .bold)).tracking(2).foregroundStyle(gold)
@@ -87,7 +125,7 @@ struct ResultsSharePoster: View {
             }
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    Text("FINAL STANDINGS").tracking(2)
+                    Text(kind.isHalfTime ? "CURRENT STANDINGS" : "FINAL STANDINGS").tracking(2)
                     Spacer()
                     Text("\(game.sweepstakePlayers.count) participants")
                 }.font(.system(size: 21, weight: .bold)).foregroundStyle(ink.opacity(0.65)).padding(.bottom, 20)
@@ -108,11 +146,11 @@ struct ResultsSharePoster: View {
                 if game.sweepstakePlayers.isEmpty { Text("No participants recorded.").font(.system(size: 26)).foregroundStyle(ink) }
             }
             .padding(30).background(.white, in: RoundedRectangle(cornerRadius: 24))
-            Text("Final sweepstake standings · Equal scores share a rank")
+            Text(kind.isHalfTime ? "Points recorded so far · Equal scores share a rank\nSecond half still to play" : "Final sweepstake standings · Equal scores share a rank")
                 .font(.system(size: 21)).foregroundStyle(.white.opacity(0.75))
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(42).frame(width: 1080, alignment: .leading)
-        .background(LinearGradient(colors: [Color(red: 0.04, green: 0.24, blue: 0.25), Color(red: 0.04, green: 0.11, blue: 0.19)], startPoint: .topLeading, endPoint: .bottomTrailing))
+        .background(AppTheme.primaryGradient)
     }
 }

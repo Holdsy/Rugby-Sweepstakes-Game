@@ -20,21 +20,26 @@ Read the illustrated [User Guide](docs/USER_GUIDE.md) for the full walkthrough.
 
 ## Screenshots
 
-Screenshots use sample participants. The sharing previews below were captured before the rename and show the former heading; version 1.1 uses **Ruck of the Draw**.
+Screenshots use sample participants and show the teal-and-gold design in build 1.1 (4).
 
-| Setup and drafts | Replacement scoring | Share final results |
+| Home and drafts | Half-time update | Amend the team |
 | --- | --- | --- |
-| <img src="docs/screenshots/home-and-drafts.png" width="240" alt="Home screen with Resume Draft and the three setup steps"> | <img src="docs/screenshots/replacement-points.png" width="240" alt="Leaderboard showing starter and replacement points"> | <img src="docs/screenshots/share-results.png" width="240" alt="Final results image preview with winner and standings"> |
+| <img src="docs/screenshots/home-and-drafts.png" width="240" alt="Teal-and-gold home screen with Resume Draft"> | <img src="docs/screenshots/half-time-update.png" width="240" alt="Half-time sharing preview with current standings"> | <img src="docs/screenshots/amend-team.png" width="240" alt="Amend Match-Day Team while preserving allocations"> |
+
+| Match Day | Share the draw | Final results |
+| --- | --- | --- |
+| <img src="docs/screenshots/match-day.png" width="240" alt="Match Day scoring and substitution controls"> | <img src="docs/screenshots/share-draw.png" width="240" alt="Draw image with player portraits"> | <img src="docs/screenshots/share-results.png" width="240" alt="Final results image with winner and standings"> |
 
 ## Main features
 
 - Guided setup, reusable participants and equal random allocations.
 - Unfinished team drafts with resume, delete and discard options.
 - Tries, conversions, penalties and drop goals, with scoring history and corrections.
+- Late match-day team amendments that preserve allocations, with an audit trail.
 - Substitution chains that retain the starter's place in the on-field list.
 - Live fixtures, available lineups and a manually refreshed match scoreboard through Highlightly.
 - Player portraits from saved catalogues and supported online sources, with initials when unavailable.
-- Draw and results images for the iPhone share sheet, plus text sharing.
+- Draw, half-time update and final results images for the iPhone share sheet, plus text sharing.
 - Saved game history, completed-game protection and reopening for corrections.
 - JSON backup and restore, including a recovery copy before replacement.
 
@@ -54,7 +59,7 @@ Player photos can come from the saved England/Ireland catalogues, additional sup
 
 Open `Rugby Sweepstakes Game.xcodeproj`, select the **Ruck of the Draw** scheme and choose an iPhone simulator. For a physical device, select your own development team under Signing & Capabilities. The existing bundle ID is `com.MarkHoldsworth.Rugby-Sweepstakes-Game`.
 
-Current TestFlight release: **1.1 (3)**, uploaded and installed on a physical iPhone on 3 November 2026.
+Current TestFlight build: **1.1 (4)**, uploaded on 3 November 2026. See [release notes](docs/RELEASE_NOTES.md) for changes and a suggested device test checklist.
 
 ## Regression tests
 
@@ -64,7 +69,7 @@ Current TestFlight release: **1.1 (3)**, uploaded and installed on a physical iP
 
 Or select **Ruck of the Draw Regression** in Xcode and use **Product → Test**. The script uses a dedicated simulator and writes logs and an `.xcresult` bundle to the ignored `.test-results/` folder.
 
-The latest validation passed **41 tests**, with zero failures, on two consecutive runs. Coverage includes draws, scoring, replacement chains, history, drafts, backups, mocked network responses, photo matching and share-image rendering. See [test documentation](RuckOfTheDrawTests/README.md) for setup, destination overrides and physical-device checks.
+The latest validation passed **48 tests**, with zero failures, for build 1.1 (4). Coverage includes draws, scoring, replacement chains, history, drafts, backups, mocked network responses, photo matching, half-time sharing, allocation-preserving team amendments and share-image rendering. See [test documentation](RuckOfTheDrawTests/README.md) for setup, destination overrides and physical-device checks.
 
 ## Project layout
 

@@ -68,7 +68,7 @@ struct BackupRestoreView: View {
                         }
                     }
                 }
-            }
+            }.appListSurface()
             .navigationTitle("Backup & Restore").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
             .onAppear { recoveryFiles = AppBackupService.recoveryFiles() }

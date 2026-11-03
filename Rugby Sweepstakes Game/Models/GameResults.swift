@@ -2,6 +2,12 @@ import Foundation
 
 /// Shared calculations for the current game and read-only saved results.
 extension Game {
+    func recordedPlayerName(_ id: UUID, at date: Date) -> String {
+        (teamAmendments ?? []).filter { $0.memberID == id && $0.recordedAt >= date }
+            .sorted { $0.recordedAt < $1.recordedAt }.first?.previousName
+            ?? teamMembers.first { $0.id == id }?.name ?? "Player"
+    }
+
     var isCompleted: Bool { completedAt != nil }
     var hasGameContent: Bool { isDrawComplete || teamMembers.contains { !$0.name.isEmpty || $0.points != 0 } }
     var displayTitle: String {

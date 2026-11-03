@@ -39,7 +39,7 @@ struct PhotoSourcesView: View {
                         .font(.caption).foregroundStyle(.secondary)
                     Link("TheSportsDB", destination: URL(string: "https://www.thesportsdb.com")!)
                 }
-            }
+            }.appListSurface()
             .navigationTitle("Photo Pages & Squads").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Done") { dismiss() } } }
             .sheet(isPresented: $showAdd) {
@@ -50,7 +50,7 @@ struct PhotoSourcesView: View {
                         Text("Use an official squad page with names beside player photos. Website layouts vary; unsupported pages leave your saved photos unchanged.")
                             .font(.caption).foregroundStyle(.secondary)
                         if let error { Text(error).foregroundStyle(.orange) }
-                    }
+                    }.appListSurface()
                     .navigationTitle("Add Photo Page").navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showAdd = false } }
@@ -93,7 +93,7 @@ private struct PhotoSourceDetail: View {
                     }
                 }
             }
-        }
+        }.appListSurface()
         .searchable(text: $search, prompt: "Find player")
         .navigationTitle(source?.team ?? "Squad Photos").navigationBarTitleDisplayMode(.inline)
         .task { if source?.updatedAt == nil { await refresh() } }

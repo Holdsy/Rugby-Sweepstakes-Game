@@ -42,7 +42,7 @@ struct GameSetupView: View {
                     if step == 0 { teamStep }
                     else if step == 1 { participantsStep }
                     else { reviewStep }
-                }
+                }.appListSurface()
             }
             .navigationTitle(titles[step])
             .navigationBarTitleDisplayMode(.inline)
@@ -74,10 +74,10 @@ struct GameSetupView: View {
                         .disabled(!canContinue)
                     }
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(AppPrimaryButtonStyle())
                 .controlSize(.large)
                 .padding()
-                .background(.regularMaterial)
+                .background(AppTheme.card)
             }
             .sheet(isPresented: $showFixturePicker) { MatchdayImportView().environmentObject(viewModel) }
             .sheet(isPresented: $showDrafts) { DraftManagementView().environmentObject(viewModel) }

@@ -68,7 +68,7 @@ struct TeamImportView: View {
                             Text("Detected Players (\(extractedPlayers.count))")
                         }
                     }
-                }
+                }.appListSurface()
                 .scrollContentBackground(.hidden)
                 .onAppear {
                     if selectedPlayers.isEmpty {
@@ -141,7 +141,7 @@ struct PlayerImportRow: View {
                 onToggle()
             } label: {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(isSelected ? .blue : .gray)
+                    .foregroundColor(isSelected ? AppTheme.teal : .gray)
                     .font(.title3)
             }
             .buttonStyle(.plain)

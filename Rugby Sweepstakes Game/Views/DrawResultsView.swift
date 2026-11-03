@@ -56,18 +56,18 @@ struct DrawResultsView: View {
                         } label: {
                             Image(systemName: "chevron.left")
                                 .font(.title3.weight(.semibold))
-                                .foregroundColor(.white)
+                                .foregroundStyle(AppTheme.teal)
                         }
                         .buttonStyle(.plain)
                         
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Draw Results")
                                 .font(.largeTitle.weight(.bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(AppTheme.teal)
                             
                             Text("See which sweepstake players drew which team members.")
                                 .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.9))
+                                .foregroundStyle(.secondary)
                         }
                         
                         Spacer()
@@ -77,7 +77,7 @@ struct DrawResultsView: View {
                         } label: {
                             Image(systemName: "square.and.arrow.up")
                                 .font(.title3.weight(.semibold))
-                                .foregroundColor(.white)
+                                .foregroundStyle(AppTheme.teal)
                         }
                     }
                     .padding(.horizontal)

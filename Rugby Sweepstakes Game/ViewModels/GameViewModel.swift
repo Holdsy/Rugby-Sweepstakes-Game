@@ -118,6 +118,35 @@ class GameViewModel: ObservableObject {
         }
     }
     
+    /// Apply all shirt-slot names atomically, allowing a starter/bench name swap.
+    /// IDs, allocations, exclusions, scores and substitution links remain unchanged.
+    @discardableResult
+    func amendMatchDayTeam(names: [UUID: String]) -> Bool {
+        guard game.isDrawComplete, !game.isCompleted, !storageWritesBlocked,
+              names.count == game.teamMembers.count,
+              Set(names.keys) == Set(game.teamMembers.map(\.id)) else { return false }
+        let cleaned = names.mapValues { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let normalized = cleaned.values.map {
+            $0.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_GB"))
+                .split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        }
+        guard cleaned.values.allSatisfy({ !$0.isEmpty && $0.count <= 120 }),
+              Set(normalized).count == normalized.count else { return false }
+        let previous = game
+        var amendments: [MatchTeamAmendment] = []
+        for index in game.teamMembers.indices {
+            let member = game.teamMembers[index]
+            guard let name = cleaned[member.id], name != member.name else { continue }
+            amendments.append(MatchTeamAmendment(memberID: member.id, shirtNumber: index + 1, previousName: member.name, newName: name))
+            game.teamMembers[index].name = name
+        }
+        guard !amendments.isEmpty else { return true }
+        game.teamAmendments = (game.teamAmendments ?? []) + amendments
+        guard saveGame() else { game = previous; return false }
+        refreshLastScoringAction()
+        return true
+    }
+
     func toggleEnabledForGame(_ memberId: UUID) {
         guard !game.isDrawComplete else { return }
         if let index = game.teamMembers.firstIndex(where: { $0.id == memberId && $0.isStarter }) {
@@ -605,7 +634,7 @@ class GameViewModel: ObservableObject {
     private func refreshLastScoringAction() {
         guard let entry = activeScoringHistory.last else { lastScoringAction = nil; return }
         lastScoringAction = ScoringAction(teamMemberId: entry.teamMemberID,
-            description: "\(entry.event.description) for \(getTeamMember(by: entry.teamMemberID)?.name ?? "Rugby player")",
+            description: "\(entry.event.description) for \(game.recordedPlayerName(entry.teamMemberID, at: entry.recordedAt))",
             points: entry.points, event: entry.event)
     }
 

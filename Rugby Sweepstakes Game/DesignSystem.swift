@@ -1,104 +1,74 @@
-//
-//  DesignSystem.swift
-//  Rugby Sweepstakes Game
-//
-//  A lightweight design system to give the app a modern, glass / liquid look
-//  while remaining compatible with current iOS SwiftUI APIs.
-//
-
 import SwiftUI
+import UIKit
 
-// MARK: - Colors & Gradients
-
+/// Shared colours and surfaces, based on the rugby ball and gold ticket icon.
 struct AppTheme {
+    static let deepTeal = Color(red: 0, green: 0.22, blue: 0.22)
+    static let teal = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.42, green: 0.80, blue: 0.75, alpha: 1)
+            : UIColor(red: 0, green: 0.34, blue: 0.33, alpha: 1)
+    })
+    static let gold = Color(red: 0.90, green: 0.68, blue: 0.25)
+    static let winner = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.95, green: 0.76, blue: 0.36, alpha: 1)
+            : UIColor(red: 0.48, green: 0.32, blue: 0.06, alpha: 1)
+    })
+    static let canvas = Color(uiColor: UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.035, green: 0.09, blue: 0.09, alpha: 1)
+            : UIColor(red: 0.94, green: 0.97, blue: 0.96, alpha: 1)
+    })
+    static let card = Color(uiColor: .secondarySystemGroupedBackground)
     static let primaryGradient = LinearGradient(
-        colors: [
-            Color(red: 0.12, green: 0.22, blue: 0.55),
-            Color(red: 0.05, green: 0.40, blue: 0.85),
-            Color(red: 0.03, green: 0.62, blue: 0.78)
-        ],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
-    
-    static let secondaryGradient = LinearGradient(
-        colors: [
-            Color.white.opacity(0.25),
-            Color.white.opacity(0.05)
-        ],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
+        colors: [deepTeal, Color(red: 0.04, green: 0.12, blue: 0.14)],
+        startPoint: .topLeading, endPoint: .bottomTrailing
     )
 }
 
-// MARK: - Backgrounds
-
+/// Retains the existing call sites while giving every screen the same calm surface.
 struct LiquidGlassBackground: View {
-    var body: some View {
-        ZStack {
-            AppTheme.primaryGradient
-                .ignoresSafeArea()
-            
-            // Soft bokeh-like blobs for depth
-            Circle()
-                .fill(Color.white.opacity(0.12))
-                .frame(width: 280, height: 280)
-                .blur(radius: 40)
-                .offset(x: -140, y: -260)
-            
-            Circle()
-                .fill(Color.white.opacity(0.10))
-                .frame(width: 260, height: 260)
-                .blur(radius: 40)
-                .offset(x: 160, y: 120)
-        }
-    }
+    var body: some View { AppTheme.canvas.ignoresSafeArea() }
 }
-
-// MARK: - Glass Card
 
 struct GlassCard<Content: View>: View {
     let content: Content
-    
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
-    }
-    
+    init(@ViewBuilder content: () -> Content) { self.content = content() }
     var body: some View {
         content
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
+            .background(AppTheme.card, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(.thinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .stroke(
-                                Color.white.opacity(0.35),
-                                lineWidth: 1
-                            )
-                    )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .stroke(AppTheme.teal.opacity(0.12), lineWidth: 1)
+            }
     }
 }
 
-// MARK: - View Helpers
+struct AppPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.body.weight(.semibold))
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+            .foregroundStyle(AppTheme.deepTeal)
+            .background(AppTheme.gold.opacity(isEnabled ? 1 : 0.35), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .opacity(configuration.isPressed ? 0.75 : (isEnabled ? 1 : 0.6))
+    }
+}
 
 extension View {
-    /// Applies the app's default "liquid glass" background.
-    func appLiquidBackground() -> some View {
-        self.background(LiquidGlassBackground())
+    func appListSurface() -> some View {
+        self.scrollContentBackground(.hidden).background(AppTheme.canvas)
     }
-    
-    /// Styles navigation bars with a translucent, modern appearance where available.
+    func appLiquidBackground() -> some View { self.background(LiquidGlassBackground()) }
     func appGlassNavigation(title: String) -> some View {
-        self
-            .navigationTitle(title)
+        self.navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            .toolbarBackground(AppTheme.canvas, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
     }
 }
-
-
