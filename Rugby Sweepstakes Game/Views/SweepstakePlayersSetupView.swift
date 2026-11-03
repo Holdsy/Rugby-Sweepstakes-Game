@@ -35,11 +35,11 @@ struct SweepstakePlayersSetupView: View {
                         .buttonStyle(.plain)
                         
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("Sweepstake Players")
+                            Text("Saved Participants")
                                 .font(.largeTitle.weight(.bold))
                                 .foregroundStyle(.white)
                             
-                            Text("Manage the master list and choose at least 2 players for this game.")
+                            Text("Save people for future games and manage their names.")
                                 .font(.subheadline)
                                 .foregroundColor(.white.opacity(0.9))
                         }
@@ -68,7 +68,7 @@ struct SweepstakePlayersSetupView: View {
                                     } label: {
                                         HStack(spacing: 8) {
                                             Image(systemName: "plus.circle.fill")
-                                            Text("Add Player")
+                                            Text("Add Participant")
                                         }
                                         .font(.subheadline.weight(.semibold))
                                     }
@@ -83,7 +83,7 @@ struct SweepstakePlayersSetupView: View {
                             
                             // All players list
                             VStack(alignment: .leading, spacing: 12) {
-                                Text("All Players")
+                                Text("Saved People")
                                     .font(.headline)
                                 
                                 if viewModel.masterPlayerList.isEmpty {
@@ -91,12 +91,16 @@ struct SweepstakePlayersSetupView: View {
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 } else {
+                                    if viewModel.game.isDrawComplete {
+                                        Text("Current game selection is locked after the draw. Start a new game to change participants.")
+                                            .font(.caption).foregroundStyle(.secondary)
+                                    }
                                     VStack(spacing: 8) {
                                         ForEach(viewModel.masterPlayerList) { player in
                                             SweepstakePlayerRow(
                                                 player: player,
                                                 isSelected: viewModel.isPlayerSelectedForGame(player.id),
-                                                canSelect: true,
+                                                canSelect: !viewModel.game.isDrawComplete,
                                                 onUpdate: { updatedPlayer in
                                                     viewModel.updateSweepstakePlayer(updatedPlayer)
                                                 },
@@ -137,7 +141,7 @@ struct SweepstakePlayersSetupView: View {
                         Text("Enter a name for the new player")
                     }
                 }
-                .navigationTitle("Add Player")
+                .navigationTitle("Add Participant")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -202,7 +206,7 @@ struct SweepstakePlayerRow: View {
                     .font(.title3)
             }
             .buttonStyle(.plain)
-            .disabled(!canSelect && !isSelected)
+            .disabled(!canSelect)
             
             Circle()
                 .fill(player.color.color)
@@ -236,6 +240,7 @@ struct SweepstakePlayerRow: View {
                     .foregroundColor(.red)
             }
             .buttonStyle(.plain)
+            .disabled(!canSelect && isSelected)
             .alert("Delete Player", isPresented: $showDeleteConfirmation) {
                 Button("Cancel", role: .cancel) { }
                 Button("Delete", role: .destructive) {

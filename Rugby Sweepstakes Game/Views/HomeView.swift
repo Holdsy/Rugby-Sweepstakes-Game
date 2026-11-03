@@ -1,201 +1,148 @@
-//
-//  HomeView.swift
-//  Rugby Sweepstakes Game
-//
-//  Created by Mark Holdsworth on 03/12/2025.
-//
-
 import SwiftUI
 
 struct HomeView: View {
-    @EnvironmentObject var viewModel: GameViewModel
-    
+    @EnvironmentObject private var viewModel: GameViewModel
+    @State private var setupRequest: SetupRequest?
+    private struct SetupRequest: Identifiable { let id = UUID(); let step: Int }
+    @State private var showResetConfirmation = false
+
+    private var nextStep: Int {
+        if !viewModel.game.isTeamSetupComplete { return 0 }
+        if viewModel.game.sweepstakePlayers.count < 2 { return 1 }
+        return 2
+    }
+    private var hasScores: Bool {
+        viewModel.game.teamMembers.contains { $0.points > 0 }
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
                 LiquidGlassBackground()
-                
                 ScrollView {
-                    VStack(spacing: 20) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Rugby Sweepstakes")
-                                .font(.largeTitle.weight(.bold))
-                                .foregroundStyle(.white)
-                            
-                            Text("Set up your team and players, run the draw, and track the action live.")
-                                .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.85))
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal)
-                        .padding(.top, 16)
-                        
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                                .fill(.thinMaterial)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 32, style: .continuous)
-                                        .stroke(Color.white.opacity(0.25), lineWidth: 0.5)
-                                )
-                            
-                            VStack(alignment: .leading, spacing: 24) {
-                                // Setup
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("Setup")
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                    
-                                    VStack(spacing: 8) {
-                                        NavigationLink {
-                                            TeamSetupView()
-                                        } label: {
-                                            HStack(spacing: 16) {
-                                                Image(systemName: "person.3.fill")
-                                                    .frame(width: 26, alignment: .leading)
-                                                Text("Set Up Team")
-                                            }
-                                            .font(.body.weight(.semibold))
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                        }
-                                        .buttonStyle(.plain)
-                                        
-                                        NavigationLink {
-                                            SweepstakePlayersSetupView()
-                                        } label: {
-                                            HStack(spacing: 16) {
-                                                Image(systemName: "person.2.fill")
-                                                    .frame(width: 26, alignment: .leading)
-                                                Text("Set Up Players")
-                                            }
-                                            .font(.body.weight(.semibold))
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                                
-                                Divider()
-                                
-                                // Game
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("Game")
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                    
-                                    VStack(spacing: 8) {
-                                        NavigationLink {
-                                            DrawView()
-                                        } label: {
-                                            HStack(spacing: 16) {
-                                                Image(systemName: "shuffle")
-                                                    .frame(width: 26, alignment: .leading)
-                                                Text("Run Draw")
-                                            }
-                                            .font(.body.weight(.semibold))
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .opacity(viewModel.game.canRunDraw ? 1.0 : 0.4)
-                                        .disabled(!viewModel.game.canRunDraw)
-                                        
-                                        if viewModel.game.isDrawComplete {
-                                            NavigationLink {
-                                                DrawResultsView()
-                                            } label: {
-                                                HStack(spacing: 16) {
-                                                    Image(systemName: "list.bullet.clipboard")
-                                                        .frame(width: 26, alignment: .leading)
-                                                    Text("View Draw Results")
-                                                }
-                                                .font(.body.weight(.semibold))
-                                                .frame(maxWidth: .infinity, alignment: .leading)
-                                            }
-                                            .buttonStyle(.plain)
-                                            
-                                            NavigationLink {
-                                                ScoringView()
-                                            } label: {
-                                                HStack(spacing: 16) {
-                                                    Image(systemName: "sportscourt.fill")
-                                                        .frame(width: 26, alignment: .leading)
-                                                    Text("Scoring / Live Game")
-                                                }
-                                                .font(.body.weight(.semibold))
-                                                .frame(maxWidth: .infinity, alignment: .leading)
-                                            }
-                                            .buttonStyle(.plain)
-                                        } else {
-                                            Text("Complete setup to unlock live scoring.")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
-                                }
-                                
-                                Divider()
-                                
-                                // Results
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("Results")
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                    
-                                    if viewModel.game.isDrawComplete {
-                                        NavigationLink {
-                                            ScoreboardView()
-                                        } label: {
-                                            HStack(spacing: 16) {
-                                                Image(systemName: "trophy.fill")
-                                                    .frame(width: 26, alignment: .leading)
-                                                Text("Scoreboard / Results")
-                                            }
-                                            .font(.body.weight(.semibold))
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                        }
-                                        .buttonStyle(.plain)
-                                    } else {
-                                        Text("Run the draw to view the scoreboard and final results.")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                                
-                                Divider()
-                                
-                                // Admin
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("Admin")
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                    
-                                    Button(role: .destructive) {
-                                        viewModel.resetGame()
-                                    } label: {
-                                        HStack(spacing: 16) {
-                                            Image(systemName: "arrow.counterclockwise")
-                                                .frame(width: 26, alignment: .leading)
-                                            Text("Reset Game")
-                                        }
-                                        .font(.body.weight(.semibold))
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
+                    VStack(alignment: .leading, spacing: 20) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(viewModel.game.displayTitle).font(.largeTitle.bold())
+                            Text(viewModel.game.isCompleted ? "Game Completed" : (viewModel.game.isDrawComplete ? "Match Day" : "Set Up Your Game")).font(.title3.weight(.semibold))
+                            if let team = viewModel.game.selectedTeamName, !team.isEmpty {
+                                Text("Following \(team)").font(.subheadline)
                             }
-                            .padding(20)
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 32)
+                        .foregroundStyle(.white)
+                        if viewModel.game.isCompleted { completedGame }
+                        else if viewModel.game.isDrawComplete { matchDay }
+                        else { setup }
+                        Button { showResetConfirmation = true } label: {
+                            Label("Start a New Game", systemImage: "plus.circle").frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent).controlSize(.large)
+                        Text("Your current game is saved to History before a new one starts.")
+                            .font(.caption).foregroundStyle(.white.opacity(0.85))
                     }
+                    .padding()
+                    .padding(.bottom, 16)
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
+            .sheet(item: $setupRequest) { request in GameSetupView(initialStep: request.step).environmentObject(viewModel) }
+            .alert("Start a New Game?", isPresented: $showResetConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Save & Start New Game") {
+                    if viewModel.resetGame() {
+                        setupRequest = SetupRequest(step: 0)
+                    }
+                }
+            } message: {
+                Text("Your current team, draw and scores will be saved to History. Your saved people and photos remain available.")
+            }
         }
+    }
+
+    @ViewBuilder private var setup: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("Three steps to your draw").font(.headline)
+                setupRow(0, "Match & Team", "\(viewModel.game.namedStarters.count) of 15 starters named", complete: viewModel.game.isTeamSetupComplete)
+                Divider()
+                setupRow(1, "Participants", "\(viewModel.game.sweepstakePlayers.count) selected", complete: viewModel.game.sweepstakePlayers.count >= 2)
+                Divider()
+                setupRow(2, "Review & Draw", viewModel.game.canRunDraw ? "Ready to draw" : "Check allocations and exclusions", complete: false)
+                Button {
+                    setupRequest = SetupRequest(step: nextStep)
+                } label: {
+                    Label(nextStep == 2 ? "Review & Run Draw" : "Continue Setup", systemImage: "arrow.right")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent).controlSize(.large)
+            }
+        }
+    }
+
+    private func setupRow(_ index: Int, _ title: String, _ detail: String, complete: Bool) -> some View {
+        Button { setupRequest = SetupRequest(step: index) } label: {
+            HStack(spacing: 12) {
+                Image(systemName: complete ? "checkmark.circle.fill" : "\(index + 1).circle")
+                    .foregroundStyle(complete ? .green : Color.accentColor)
+                    .font(.title2)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title).font(.body.weight(.semibold)).foregroundStyle(.primary)
+                    Text(detail).font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").foregroundStyle(.secondary)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder private var completedGame: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                Label("Final Results Saved", systemImage: "checkmark.seal.fill").font(.headline)
+                if let winner = viewModel.game.winningParticipants.first {
+                    Text("\(viewModel.game.winningParticipants.count == 1 ? "Winner" : "Joint winners"): \(viewModel.game.winningParticipants.map(\.name).joined(separator: ", "))")
+                        .font(.title3.bold())
+                    Text("\(viewModel.game.pointsForParticipant(winner.id)) points\(viewModel.game.winningParticipants.count > 1 ? " each" : "")")
+                }
+                NavigationLink { GameResultsView(game: viewModel.game) } label: {
+                    Label("View & Share Final Results", systemImage: "trophy.fill").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent).controlSize(.large)
+                Text("Open results to review allocations or reopen this game for corrections.").font(.caption).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    @ViewBuilder private var matchDay: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 16) {
+                Label(hasScores ? "Game in progress" : "Draw complete — ready to score", systemImage: "sportscourt.fill")
+                    .font(.headline)
+                Text("\(viewModel.game.sweepstakePlayers.count) participants · \(viewModel.game.enabledStarters.count) rugby players allocated")
+                    .font(.subheadline).foregroundStyle(.secondary)
+                NavigationLink { MatchDayView(initialSection: .score) } label: {
+                    Label(hasScores ? "Continue Scoring" : "Start Scoring", systemImage: "plus.circle.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent).controlSize(.large)
+                NavigationLink { MatchDayView(initialSection: .leaderboard) } label: {
+                    Label("Leaderboard", systemImage: "trophy").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered).controlSize(.large)
+            }
+        }
+        GlassCard {
+            NavigationLink { MatchDayView(initialSection: .allocations) } label: {
+                HStack {
+                    Label("View & Share Allocations", systemImage: "list.bullet.clipboard")
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption)
+                }
+            }
+        }
+        Text("Your team and participant selection are locked for this draw. Start a new game to change them.")
+            .font(.caption).foregroundStyle(.white.opacity(0.85))
     }
 }
 
-#Preview {
-    HomeView()
-        .environmentObject(GameViewModel())
-}
-
+#Preview { HomeView().environmentObject(GameViewModel()) }

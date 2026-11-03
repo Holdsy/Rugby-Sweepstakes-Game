@@ -12,6 +12,7 @@ struct DrawView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isRunningDraw = false
     @State private var showResults = false
+    @State private var showRedrawConfirmation = false
     
     var body: some View {
         ZStack {
@@ -65,7 +66,7 @@ struct DrawView: View {
                                 }
                                 
                                 Button {
-                                    runDraw()
+                                    showRedrawConfirmation = true
                                 } label: {
                                     if isRunningDraw {
                                         ProgressView()
@@ -124,9 +125,33 @@ struct DrawView: View {
                                                 Label("Need at least 1 enabled starter", systemImage: "xmark.circle.fill")
                                                     .foregroundColor(.red)
                                             }
+                                            if !viewModel.game.enabledStartersHaveNames {
+                                                Label("Every enabled starter needs a name", systemImage: "xmark.circle.fill")
+                                                    .foregroundColor(.red)
+                                            }
                                             if viewModel.game.sweepstakePlayers.count < 2 {
                                                 Label("Need at least 2 sweepstake players", systemImage: "xmark.circle.fill")
                                                     .foregroundColor(.red)
+                                            }
+                                            if viewModel.game.playersToDisableForEvenDraw > 0 {
+                                                let count = viewModel.game.playersToDisableForEvenDraw
+                                                NavigationLink {
+                                                    TeamSetupView()
+                                                } label: {
+                                                    HStack {
+                                                        Label(
+                                                            count == 1
+                                                                ? "1 England player needs to be disabled for the game"
+                                                                : "\(count) England players need to be disabled for the game",
+                                                            systemImage: "person.crop.circle.badge.minus"
+                                                        )
+                                                        Spacer()
+                                                        Image(systemName: "chevron.right")
+                                                    }
+                                                    .foregroundColor(.red)
+                                                    .contentShape(Rectangle())
+                                                }
+                                                .buttonStyle(.plain)
                                             }
                                         }
                                         .font(.caption)
@@ -168,6 +193,14 @@ struct DrawView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .confirmationDialog("Run the draw again?", isPresented: $showRedrawConfirmation, titleVisibility: .visible) {
+            Button("Replace Existing Draw", role: .destructive) {
+                runDraw()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("This replaces every current allocation. Existing scores remain attached to team members.")
+        }
     }
     
     private func runDraw() {
@@ -187,4 +220,3 @@ struct DrawView: View {
             .environmentObject(GameViewModel())
     }
 }
-

@@ -9,16 +9,35 @@ import Foundation
 import SwiftUI
 import Combine
 
+struct ScoringAction: Identifiable {
+    let id = UUID()
+    let teamMemberId: UUID
+    let description: String
+    let points: Int
+    let event: ScoringEvent?
+}
+
 @MainActor
 class GameViewModel: ObservableObject {
     @Published var game: Game
     @Published var masterPlayerList: [SweepstakePlayer] = []
-    private let persistenceService = GamePersistenceService()
-    
-    init() {
+    @Published private(set) var lastScoringAction: ScoringAction?
+    @Published private(set) var englandSquad: [EnglandSquadPlayer] = []
+    @Published private(set) var englandSquadImportedAt: Date?
+    @Published private(set) var savedGames: [Game] = []
+    @Published var persistenceError: String?
+    @Published private(set) var storageWritesBlocked = false
+    private let persistenceService: GamePersistenceService
+
+    init(persistenceService: GamePersistenceService? = nil) {
+        let persistenceService = persistenceService ?? GamePersistenceService()
+        self.persistenceService = persistenceService
         // Initialize game first (required before using self)
         self.game = Game()
         self.masterPlayerList = []
+        let savedEnglandSquad = persistenceService.loadEnglandSquad()
+        self.englandSquad = savedEnglandSquad.players
+        self.englandSquadImportedAt = savedEnglandSquad.importedAt
         
         // Load master player list
         masterPlayerList = persistenceService.loadMasterPlayerList()
@@ -35,14 +54,21 @@ class GameViewModel: ObservableObject {
             ensureUniqueColors()
         }
         
-        // Try to load existing game, or create a new one
-        if let savedGame = persistenceService.loadGame() {
-            self.game = savedGame
-            // Sync selected players with master list (in case master list was updated)
-            syncSelectedPlayersWithMaster()
-        } else {
+        do {
+            if let state = try persistenceService.loadState() {
+                self.game = state.game
+                self.savedGames = state.savedGames
+                if !game.isDrawComplete { syncSelectedPlayersWithMaster() }
+            } else {
+                initializeDefaultGame()
+            }
+        } catch {
+            // Never replace an unreadable existing save with a fresh game.
+            storageWritesBlocked = true
+            persistenceError = "Your saved games could not be opened. The existing save has been preserved."
             initializeDefaultGame()
         }
+        refreshLastScoringAction()
         saveGame()
     }
     
@@ -85,6 +111,7 @@ class GameViewModel: ObservableObject {
     // MARK: - Team Management
     
     func updateTeamMember(_ member: TeamMember) {
+        guard !game.isDrawComplete else { return }
         if let index = game.teamMembers.firstIndex(where: { $0.id == member.id }) {
             game.teamMembers[index] = member
             saveGame()
@@ -92,41 +119,130 @@ class GameViewModel: ObservableObject {
     }
     
     func toggleEnabledForGame(_ memberId: UUID) {
+        guard !game.isDrawComplete else { return }
         if let index = game.teamMembers.firstIndex(where: { $0.id == memberId && $0.isStarter }) {
             game.teamMembers[index].isEnabledForGame.toggle()
             saveGame()
         }
     }
+
+    func disableRandomStartersForEvenDraw() {
+        guard !game.isDrawComplete else { return }
+        let numberToDisable = game.playersToDisableForEvenDraw
+        guard numberToDisable > 0 else { return }
+
+        let memberIds = Set(
+            game.enabledStarters
+                .shuffled()
+                .prefix(numberToDisable)
+                .map(\.id)
+        )
+
+        for index in game.teamMembers.indices where memberIds.contains(game.teamMembers[index].id) {
+            game.teamMembers[index].isEnabledForGame = false
+        }
+
+        saveGame()
+    }
     
+    /// Compatibility entry point for replacing an original starter.
     func linkSubstitute(substituteId: UUID, to starterId: UUID) {
-        // Unlink substitute from any other starter first
-        for i in game.teamMembers.indices {
-            if game.teamMembers[i].isStarter && game.teamMembers[i].linkedSubstituteId == substituteId {
-                game.teamMembers[i].linkedSubstituteId = nil
-            }
-        }
-        
-        // Link to the new starter
-        if let starterIndex = game.teamMembers.firstIndex(where: { $0.id == starterId && $0.isStarter }) {
-            game.teamMembers[starterIndex].linkedSubstituteId = substituteId
-            saveGame()
-        }
+        guard let starter = getTeamMember(by: starterId), starter.isStarter, starter.linkedSubstituteId == nil else { return }
+        makeSubstitution(outgoingID: starterId, incomingID: substituteId)
     }
-    
+
+    /// Follow the original allocation through a chain of replacements.
+    func makeSubstitution(outgoingID: UUID, incomingID: UUID) {
+        guard game.isDrawComplete, !game.isCompleted, outgoingID != incomingID,
+              let outgoing = getTeamMember(by: outgoingID), isOnField(outgoing),
+              let incoming = getTeamMember(by: incomingID), incoming.isSubstitute, !isOnField(incoming),
+              !incoming.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              let rootID = scoringBundle(for: outgoingID),
+              let rootIndex = game.teamMembers.firstIndex(where: { $0.id == rootID && $0.isStarter }) else { return }
+        prepareScoringHistory()
+        game.teamMembers[rootIndex].linkedSubstituteId = incomingID
+        game.substitutionHistory = (game.substitutionHistory ?? []) + [MatchSubstitutionEntry(starterID: rootID, replacementID: incomingID, isReturn: false, outgoingPlayerID: outgoingID)]
+        saveGame()
+    }
+
     func unlinkSubstitute(from starterId: UUID) {
-        if let starterIndex = game.teamMembers.firstIndex(where: { $0.id == starterId && $0.isStarter }) {
-            game.teamMembers[starterIndex].linkedSubstituteId = nil
-            saveGame()
-        }
+        guard game.isDrawComplete, !game.isCompleted,
+              let index = game.teamMembers.firstIndex(where: { $0.id == starterId && $0.isStarter }),
+              let substituteID = game.teamMembers[index].linkedSubstituteId else { return }
+        prepareScoringHistory()
+        game.teamMembers[index].linkedSubstituteId = nil
+        game.substitutionHistory = (game.substitutionHistory ?? []) + [MatchSubstitutionEntry(starterID: starterId, replacementID: substituteID, isReturn: true, outgoingPlayerID: substituteID)]
+        saveGame()
     }
-    
+
     func getTeamMember(by id: UUID) -> TeamMember? {
         game.teamMembers.first { $0.id == id }
     }
     
+    func setSelectedTeamName(_ name: String) {
+        guard !game.isDrawComplete else { return }
+        let value = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        game.selectedTeamName = value.isEmpty ? nil : name
+        saveGame()
+    }
+
     // MARK: - Team Import
+
+    func importEnglandSquad() async throws {
+        let players = try await EnglandTeamImporter.currentSeniorSquad()
+        let importedAt = Date()
+        englandSquad = players
+        englandSquadImportedAt = importedAt
+        persistenceService.saveEnglandSquad(players, importedAt: importedAt)
+    }
+
+    func englandSquadPlayer(named name: String) -> EnglandSquadPlayer? {
+        guard let index = EnglandPlayerNameMatcher.index(named: name, in: englandSquad.map(\.name)) else { return nil }
+        return englandSquad[index]
+    }
+
+    func availableEnglandSquadPlayers(excluding memberID: UUID) -> [EnglandSquadPlayer] {
+        if let team = game.selectedTeamName,
+           !team.isEmpty && team.trimmingCharacters(in: .whitespacesAndNewlines).caseInsensitiveCompare("England") != .orderedSame { return [] }
+        let assignedNames = Set(game.teamMembers
+            .filter { $0.id != memberID && !$0.name.isEmpty }
+            .map { EnglandPlayerNameMatcher.key($0.name) })
+        return englandSquad.filter { !assignedNames.contains(EnglandPlayerNameMatcher.key($0.name)) }
+    }
+
+    func assignEnglandPlayer(_ player: EnglandSquadPlayer?, to memberID: UUID) {
+        guard !game.isDrawComplete else { return }
+        guard let index = game.teamMembers.firstIndex(where: { $0.id == memberID }) else {
+            return
+        }
+        game.teamMembers[index].name = player?.name ?? ""
+        saveGame()
+    }
     
+    /// A reviewed complete matchday team starts a fresh draw with fresh scores.
+    func importMatchdayTeam(_ players: [ExtractedPlayer], fixtureName: String? = nil, teamName: String? = nil, fixtureDate: String? = nil, providerMatchID: Int? = nil, providerName: String? = nil) {
+        guard !game.isDrawComplete else { return }
+        guard players.count == 23,
+              Set(players.compactMap(\.number)) == Set(1...23),
+              players.allSatisfy({ !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else { return }
+        resetTeam()
+        game.isDrawComplete = false
+        for index in game.sweepstakePlayers.indices {
+            game.sweepstakePlayers[index].assignedTeamMemberIds = []
+            game.sweepstakePlayers[index].drawRounds = []
+        }
+        lastScoringAction = nil
+        game.fixtureName = fixtureName
+        game.selectedTeamName = teamName
+        game.fixtureDate = fixtureDate
+        game.providerMatchID = providerMatchID
+        game.providerName = providerName
+        game.lineupImportedAt = Date()
+        importPlayers(players)
+    }
+
     func importPlayers(_ players: [ExtractedPlayer]) {
+        guard !game.isDrawComplete else { return }
         // Sort players by number (if available)
         let sortedPlayers = players.sorted { p1, p2 in
             let num1 = p1.number ?? 999
@@ -202,17 +318,20 @@ class GameViewModel: ObservableObject {
         }
         
         // Update in current game if selected
-        if let index = game.sweepstakePlayers.firstIndex(where: { $0.id == player.id }) {
-            game.sweepstakePlayers[index] = player
+        if !game.isCompleted, let index = game.sweepstakePlayers.firstIndex(where: { $0.id == player.id }) {
+            game.sweepstakePlayers[index].name = player.name
+            game.sweepstakePlayers[index].color = player.color
             saveGame()
         }
     }
     
-    func addMasterPlayer(name: String) {
+    @discardableResult
+    func addMasterPlayer(name: String) -> UUID {
         let uniqueColor = getNextAvailableColor()
         let newPlayer = SweepstakePlayer(name: name, color: uniqueColor)
         masterPlayerList.append(newPlayer)
         saveMasterPlayerList()
+        return newPlayer.id
     }
     
     // MARK: - Color Management
@@ -268,8 +387,9 @@ class GameViewModel: ObservableObject {
     }
     
     func deleteMasterPlayer(_ playerId: UUID) {
+        guard canDeletePlayer(playerId) else { return }
         // Remove from current game first if selected
-        if isPlayerSelectedForGame(playerId) {
+        if !game.isCompleted && isPlayerSelectedForGame(playerId) {
             game.sweepstakePlayers.removeAll { $0.id == playerId }
             saveGame()
         }
@@ -280,8 +400,7 @@ class GameViewModel: ObservableObject {
     }
     
     func canDeletePlayer(_ playerId: UUID) -> Bool {
-        // Can always delete, but if in game, it will be removed from game first
-        return true
+        !(game.isDrawComplete && !game.isCompleted && isPlayerSelectedForGame(playerId))
     }
     
     func isPlayerSelectedForGame(_ playerId: UUID) -> Bool {
@@ -289,6 +408,7 @@ class GameViewModel: ObservableObject {
     }
     
     func togglePlayerSelection(_ playerId: UUID) {
+        guard !game.isDrawComplete else { return }
         if isPlayerSelectedForGame(playerId) {
             // Deselect - remove from game
             game.sweepstakePlayers.removeAll { $0.id == playerId }
@@ -325,7 +445,7 @@ class GameViewModel: ObservableObject {
     
     func runFullDraw() {
         // Only require that the game is in a valid state; always allow re-running.
-        guard game.canRunDraw else { return }
+        guard game.canRunDraw && !game.isDrawComplete else { return }
         
         // Reset previous draw (if any) so each run starts fresh
         for i in game.sweepstakePlayers.indices {
@@ -389,59 +509,135 @@ class GameViewModel: ObservableObject {
     
     // MARK: - Scoring
     
-    func addPoints(to teamMemberId: UUID, points: Int) {
-        if let index = game.teamMembers.firstIndex(where: { $0.id == teamMemberId }) {
-            game.teamMembers[index].points += points
-            saveGame()
+    /// Run once for an existing game, before its first new score or substitution.
+    func prepareScoringHistory() {
+        guard !game.isCompleted, game.scoringBaseline == nil else { return }
+        game.scoringBaseline = game.starters.map { starter in
+            ScoringBaseline(bundleID: starter.id, points: starter.points + (getLinkedSubstitute(for: starter.id)?.points ?? 0))
+        }
+        game.scoringHistory = game.scoringHistory ?? []
+        saveGame()
+    }
+
+    var activeScoringHistory: [MatchScoreEntry] {
+        (game.scoringHistory ?? []).filter { $0.undoneAt == nil }
+    }
+
+    func scoringBundle(for memberID: UUID) -> UUID? {
+        guard let member = getTeamMember(by: memberID) else { return nil }
+        return member.isStarter ? memberID : game.starters.first(where: { $0.linkedSubstituteId == memberID })?.id
+    }
+
+    func participant(forBundle bundleID: UUID?) -> SweepstakePlayer? {
+        guard let bundleID else { return nil }
+        return game.sweepstakePlayers.first { $0.assignedTeamMemberIds.contains(bundleID) }
+    }
+
+    func isOnField(_ member: TeamMember) -> Bool {
+        member.isStarter ? member.linkedSubstituteId == nil : game.starters.contains { $0.linkedSubstituteId == member.id }
+    }
+
+    func adjustScoringEvent(_ event: ScoringEvent, for teamMemberId: UUID, by amount: Int) {
+        guard game.isDrawComplete, !game.isCompleted,
+              let index = game.teamMembers.firstIndex(where: { $0.id == teamMemberId }),
+              amount == 1 || amount == -1 else { return }
+        // An unlinked bench player must enter the field before they can receive points.
+        guard game.teamMembers[index].isStarter || scoringBundle(for: teamMemberId) != nil else { return }
+        let current = count(for: event, member: game.teamMembers[index])
+        guard current + amount >= 0 else { return }
+        prepareScoringHistory()
+        var bundle = scoringBundle(for: teamMemberId)
+        var ownerID = participant(forBundle: bundle)?.id
+        var correctionOfID: UUID?
+        if amount < 0 {
+            let correctedIDs = Set(activeScoringHistory.compactMap(\.correctionOfID))
+            var legacyRemovals: [UUID?: Int] = [:]
+            var source: MatchScoreEntry?
+            for candidate in activeScoringHistory.reversed() where candidate.teamMemberID == teamMemberId && candidate.event == event {
+                if candidate.countChange < 0 {
+                    if candidate.correctionOfID == nil { legacyRemovals[candidate.bundleID, default: 0] += 1 }
+                } else if !correctedIDs.contains(candidate.id) {
+                    if legacyRemovals[candidate.bundleID, default: 0] > 0 { legacyRemovals[candidate.bundleID, default: 0] -= 1 }
+                    else { source = candidate; break }
+                }
+            }
+            if let source {
+                bundle = source.bundleID; ownerID = source.participantID; correctionOfID = source.id
+            } else if game.teamMembers[index].isSubstitute {
+                // Old substitute totals without attribution cannot safely be reassigned.
+                return
+            }
+            if let bundle, game.pointsForBundle(bundle) < event.points { return }
+        }
+        let entry = MatchScoreEntry(teamMemberID: teamMemberId, bundleID: bundle,
+                                   participantID: ownerID, event: event, countChange: amount, correctionOfID: correctionOfID)
+        changeCount(event, index: index, by: amount)
+        game.scoringHistory = (game.scoringHistory ?? []) + [entry]
+        refreshLastScoringAction()
+        saveGame()
+    }
+
+    private func count(for event: ScoringEvent, member: TeamMember) -> Int {
+        switch event {
+        case .tryScore: member.tryCount
+        case .penalty: member.penaltyCount
+        case .conversion: member.conversionCount
+        case .dropGoal: member.dropGoalCount
         }
     }
-    
-    func addTry(to teamMemberId: UUID) {
-        addPoints(to: teamMemberId, points: 5)
-    }
-    
-    func addPenalty(to teamMemberId: UUID) {
-        addPoints(to: teamMemberId, points: 3)
-    }
-    
-    func addConversion(to teamMemberId: UUID) {
-        addPoints(to: teamMemberId, points: 2)
-    }
-    
-    // Get total points for a team member bundle (starter + linked substitute)
-    func getTotalPointsForTeamMember(_ teamMemberId: UUID) -> Int {
-        guard let member = getTeamMember(by: teamMemberId) else { return 0 }
-        
-        var total = member.points
-        
-        // Add points from linked substitute if exists
-        if let substituteId = member.linkedSubstituteId,
-           let substitute = getTeamMember(by: substituteId) {
-            total += substitute.points
+
+    private func changeCount(_ event: ScoringEvent, index: Int, by amount: Int) {
+        switch event {
+        case .tryScore: game.teamMembers[index].tryCount += amount
+        case .penalty: game.teamMembers[index].penaltyCount += amount
+        case .conversion: game.teamMembers[index].conversionCount += amount
+        case .dropGoal: game.teamMembers[index].dropGoalCount += amount
         }
-        
-        return total
     }
-    
-    // Get total points for a sweepstake player
-    func getTotalPoints(for sweepstakePlayerId: UUID) -> Int {
-        guard let player = game.sweepstakePlayers.first(where: { $0.id == sweepstakePlayerId }) else {
-            return 0
-        }
-        
-        var total = 0
-        for teamMemberId in player.assignedTeamMemberIds {
-            total += getTotalPointsForTeamMember(teamMemberId)
-        }
-        
-        return total
+
+    private func refreshLastScoringAction() {
+        guard let entry = activeScoringHistory.last else { lastScoringAction = nil; return }
+        lastScoringAction = ScoringAction(teamMemberId: entry.teamMemberID,
+            description: "\(entry.event.description) for \(getTeamMember(by: entry.teamMemberID)?.name ?? "Rugby player")",
+            points: entry.points, event: entry.event)
     }
-    
-    // Get sorted sweepstake players by points (descending)
-    func getSortedSweepstakePlayers() -> [SweepstakePlayer] {
-        game.sweepstakePlayers.sorted { getTotalPoints(for: $0.id) > getTotalPoints(for: $1.id) }
+
+    func addTry(to teamMemberId: UUID) { adjustScoringEvent(.tryScore, for: teamMemberId, by: 1) }
+    func addPenalty(to teamMemberId: UUID) { adjustScoringEvent(.penalty, for: teamMemberId, by: 1) }
+    func addConversion(to teamMemberId: UUID) { adjustScoringEvent(.conversion, for: teamMemberId, by: 1) }
+
+    func canUndoScoringEntry(_ id: UUID) -> Bool {
+        guard !game.isCompleted,
+              !activeScoringHistory.contains(where: { $0.correctionOfID == id }),
+              let entry = activeScoringHistory.first(where: { $0.id == id }),
+              let member = getTeamMember(by: entry.teamMemberID),
+              count(for: entry.event, member: member) - entry.countChange >= 0 else { return false }
+        if let bundle = entry.bundleID, game.pointsForBundle(bundle) - entry.points < 0 { return false }
+        return true
     }
-    
+
+    /// Remove a specific recorded score using its original attribution, not current substitutions.
+    func undoScoringEntry(_ id: UUID) {
+        guard canUndoScoringEntry(id),
+              let historyIndex = game.scoringHistory?.firstIndex(where: { $0.id == id }),
+              let entry = game.scoringHistory?[historyIndex],
+              let memberIndex = game.teamMembers.firstIndex(where: { $0.id == entry.teamMemberID }) else { return }
+        changeCount(entry.event, index: memberIndex, by: -entry.countChange)
+        game.scoringHistory?[historyIndex].undoneAt = Date()
+        refreshLastScoringAction()
+        saveGame()
+    }
+
+    func undoLastScoringAction() {
+        guard let entry = activeScoringHistory.last else { return }
+        undoScoringEntry(entry.id)
+    }
+
+    func rank(for participantID: UUID) -> Int { game.participantRank(participantID) }
+    func getTotalPointsForTeamMember(_ id: UUID) -> Int { game.pointsForBundle(id) }
+    func getTotalPoints(for id: UUID) -> Int { game.pointsForParticipant(id) }
+    func getSortedSweepstakePlayers() -> [SweepstakePlayer] { game.rankedParticipants }
+
     // Get winners (handles ties)
     func getWinners() -> [SweepstakePlayer] {
         let sorted = getSortedSweepstakePlayers()
@@ -462,15 +658,60 @@ class GameViewModel: ObservableObject {
         return getTeamMember(by: substituteId)
     }
     
-    func resetGame() {
-        persistenceService.clearGame()
+    /// Completed and unfinished games are preserved before starting another.
+    @discardableResult
+    func resetGame() -> Bool {
+        guard !storageWritesBlocked else { return false }
+        let previousGame = game, previousHistory = savedGames
+        if game.hasGameContent { storeSnapshot(game) }
         game = Game()
-        // Keep master player list, just reset game selection
+        lastScoringAction = nil
         initializeDefaultGame()
-        saveGame()
+        guard saveGame() else {
+            game = previousGame; savedGames = previousHistory; refreshLastScoringAction()
+            return false
+        }
+        return true
     }
-    
+
+    private func storeSnapshot(_ value: Game) {
+        var snapshot = value
+        snapshot.savedToHistoryAt = Date()
+        savedGames.removeAll { $0.id == snapshot.id }
+        savedGames.insert(snapshot, at: 0)
+    }
+
+    @discardableResult
+    func finishGame() -> Bool {
+        guard game.isDrawComplete, !game.isCompleted, !storageWritesBlocked else { return false }
+        let previousGame = game, previousHistory = savedGames
+        game.completedAt = Date()
+        storeSnapshot(game)
+        guard saveGame() else { game = previousGame; savedGames = previousHistory; return false }
+        return true
+    }
+
+    /// Preserve the other current game before restoring a saved game for correction.
+    @discardableResult
+    func reopenGame(_ id: UUID) -> Bool {
+        guard !storageWritesBlocked,
+              var restored = savedGames.first(where: { $0.id == id }) ?? (game.id == id ? game : nil) else { return false }
+        let previousGame = game, previousHistory = savedGames
+        if game.id != id && game.hasGameContent { storeSnapshot(game) }
+        savedGames.removeAll { $0.id == id }
+        restored.completedAt = nil
+        restored.savedToHistoryAt = nil
+        game = restored
+        refreshLastScoringAction()
+        guard saveGame() else {
+            game = previousGame; savedGames = previousHistory; refreshLastScoringAction()
+            return false
+        }
+        return true
+    }
+
     func resetTeam() {
+        guard !game.isDrawComplete else { return }
         // Clear all team member information (starters and substitutes)
         var members: [TeamMember] = []
         
@@ -502,12 +743,19 @@ class GameViewModel: ObservableObject {
     
     // MARK: - Persistence
     
-    private func saveGame() {
-        persistenceService.saveGame(game)
+    @discardableResult
+    private func saveGame() -> Bool {
+        guard !storageWritesBlocked else { return false }
+        do {
+            try persistenceService.saveState(game: game, savedGames: savedGames)
+            return true
+        } catch {
+            persistenceError = "Changes could not be saved. Your previous saved game has been kept. Please try again."
+            return false
+        }
     }
     
     private func saveMasterPlayerList() {
         persistenceService.saveMasterPlayerList(masterPlayerList)
     }
 }
-

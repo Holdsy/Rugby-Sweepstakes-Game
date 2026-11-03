@@ -91,6 +91,12 @@ struct ScoreboardView: View {
                                 .font(.title3.weight(.semibold))
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Share scoreboard")
+
+                        Button("Finish") {
+                            showFinalResults = true
+                        }
+                        .font(.subheadline.weight(.semibold))
                     }
                 }
                 
@@ -111,15 +117,6 @@ struct ScoreboardView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    showFinalResults = true
-                } label: {
-                    Text("Finish Game")
-                }
-            }
-        }
         .sheet(isPresented: $showFinalResults) {
             FinalResultsView()
                 .environmentObject(viewModel)
@@ -188,12 +185,12 @@ struct ScoreboardPlayerRow: View {
                     let memberPoints = viewModel.getTotalPointsForTeamMember(member.id)
                     
                     HStack {
-                        if let substitute = linkedSubstitute {
-                            Text("• \(member.displayName(linkedSubstitute: substitute))")
-                                .font(.caption)
-                        } else {
-                            Text("• \(member.name)\(member.position.map { " - \($0)" } ?? "")")
-                                .font(.caption)
+                        VStack(alignment: .leading, spacing: 3) {
+                            TeamMemberProfileView(member: member)
+                            if let substitute = linkedSubstitute {
+                                TeamMemberProfileView(member: substitute, imageSize: 28, namePrefix: "On: ")
+                                    .padding(.leading, 16)
+                            }
                         }
                         Spacer()
                         Text("\(memberPoints) pts")
@@ -318,12 +315,12 @@ struct FinalResultsView: View {
                                     let memberPoints = viewModel.getTotalPointsForTeamMember(member.id)
                                     
                                     HStack {
-                                        if let substitute = linkedSubstitute {
-                                            Text("• \(member.displayName(linkedSubstitute: substitute))")
-                                                .font(.caption)
-                                        } else {
-                                            Text("• \(member.name)\(member.position.map { " - \($0)" } ?? "")")
-                                                .font(.caption)
+                                        VStack(alignment: .leading, spacing: 3) {
+                                            TeamMemberProfileView(member: member)
+                                            if let substitute = linkedSubstitute {
+                                                TeamMemberProfileView(member: substitute, imageSize: 28, namePrefix: "On: ")
+                                                    .padding(.leading, 16)
+                                            }
                                         }
                                         Spacer()
                                         Text("\(memberPoints) pts")
@@ -362,4 +359,3 @@ struct FinalResultsView: View {
             .environmentObject(GameViewModel())
     }
 }
-

@@ -8,14 +8,19 @@
 import SwiftUI
 
 struct TeamSetupView: View {
+    var showsDrawPreparation = true
     @EnvironmentObject var viewModel: GameViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var showFixturePicker = false
     @State private var showPhotoPicker = false
     @State private var selectedImage: UIImage?
     @State private var extractedPlayers: [ExtractedPlayer] = []
     @State private var showImportReview = false
     @State private var isProcessingImage = false
     @State private var showResetConfirmation = false
+    @State private var showImportFailure = false
+    @State private var isImportingEnglandSquad = false
+    @State private var englandImportError: String?
     
     var body: some View {
         ZStack {
@@ -39,25 +44,92 @@ struct TeamSetupView: View {
                                 .font(.largeTitle.weight(.bold))
                                 .foregroundStyle(.white)
                             
-                            Text("Add starters and substitutes, then link them for in‑game substitutions.")
+                            Text(showsDrawPreparation ? "Review your rugby players and replacements." : "Name your starters and replacements. You’ll review draw exclusions later.")
                                 .font(.subheadline)
                                 .foregroundColor(.white.opacity(0.9))
                         }
                         
                         Spacer()
                         
-                        Button {
-                            showPhotoPicker = true
+                        Menu {
+                            Button {
+                                showFixturePicker = true
+                            } label: {
+                                Label("Choose Fixture & Team", systemImage: "sportscourt")
+                            }
+
+                            Button {
+                                importEnglandSquad()
+                            } label: {
+                                Label("Import England Squad", systemImage: "arrow.down.circle")
+                            }
+                            .disabled(isImportingEnglandSquad)
+
+                            Button {
+                                showPhotoPicker = true
+                            } label: {
+                                Label("Import from Photo", systemImage: "photo.on.rectangle")
+                            }
+
+                            Button(role: .destructive) {
+                                showResetConfirmation = true
+                            } label: {
+                                Label("Clear Team", systemImage: "arrow.counterclockwise")
+                            }
                         } label: {
-                            Image(systemName: "photo.on.rectangle")
+                            Label("Team Actions", systemImage: "ellipsis.circle")
+                                .labelStyle(.iconOnly)
                                 .font(.title2.weight(.semibold))
-                                .foregroundColor(.white)
+                                .foregroundStyle(.white)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Import team from photo")
+                        .accessibilityLabel("Team actions")
                     }
                     .padding(.horizontal)
                     .padding(.top, 16)
+
+                    if let importedAt = viewModel.englandSquadImportedAt {
+                        Text("England squad last imported \(importedAt.formatted(date: .abbreviated, time: .shortened))")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.85))
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal)
+                    }
+
+                    if showsDrawPreparation && viewModel.game.playersToDisableForEvenDraw > 0 {
+                        let numberToDisable = viewModel.game.playersToDisableForEvenDraw
+
+                        GlassCard {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Label("Even out the draw", systemImage: "shuffle")
+                                    .font(.headline)
+
+                                Text(numberToDisable == 1
+                                     ? "1 rugby player needs to be disabled so everyone receives the same number of players."
+                                     : "\(numberToDisable) rugby players need to be disabled so everyone receives the same number of players.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+
+                                Button {
+                                    viewModel.disableRandomStartersForEvenDraw()
+                                } label: {
+                                    Label(
+                                        numberToDisable == 1
+                                            ? "Randomly Disable 1 Player"
+                                            : "Randomly Disable \(numberToDisable) Players",
+                                        systemImage: "dice"
+                                    )
+                                    .frame(maxWidth: .infinity)
+                                }
+                                .buttonStyle(.borderedProminent)
+
+                                Text("Disabled players remain in the squad and can be re-enabled below.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.horizontal)
+                    }
                     
                     GlassCard {
                         VStack(alignment: .leading, spacing: 24) {
@@ -67,18 +139,18 @@ struct TeamSetupView: View {
                                     Text("Starters")
                                         .font(.headline)
                                     Spacer()
-                                    Text("\(viewModel.game.starters.count)/15")
+                                    Text("\(viewModel.game.namedStarters.count)/15 named")
                                         .font(.caption.weight(.semibold))
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 4)
                                         .background(
                                             Capsule()
-                                                .fill(viewModel.game.starters.count == 15 ? Color.green.opacity(0.18) : Color.orange.opacity(0.18))
+                                                .fill(viewModel.game.namedStarters.count == 15 ? Color.green.opacity(0.18) : Color.orange.opacity(0.18))
                                         )
-                                        .foregroundColor(viewModel.game.starters.count == 15 ? .green : .orange)
+                                        .foregroundColor(viewModel.game.namedStarters.count == 15 ? .green : .orange)
                                 }
                                 
-                                Text("Add exactly 15 starting players. Toggle to enable/disable players for the sweepstake.")
+                                Text(showsDrawPreparation ? "Name all 15 starters. Disable anyone who should not be included in the draw." : "Name all 15 starters to continue setup.")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                 
@@ -88,8 +160,11 @@ struct TeamSetupView: View {
                                             member: member,
                                             shirtNumber: index + 1, // 1-15 for starters
                                             isStarter: true,
+                                            showsDrawPreparation: showsDrawPreparation,
                                             availableSubstitutes: viewModel.game.substitutes,
                                             starters: viewModel.game.starters,
+                                            squadPlayer: viewModel.englandSquadPlayer(named: member.name),
+                                            availableSquadPlayers: viewModel.availableEnglandSquadPlayers(excluding: member.id),
                                             onUpdate: { updatedMember in
                                                 viewModel.updateTeamMember(updatedMember)
                                             },
@@ -101,6 +176,9 @@ struct TeamSetupView: View {
                                             },
                                             onUnlinkSubstitute: {
                                                 viewModel.unlinkSubstitute(from: member.id)
+                                            },
+                                            onSelectSquadPlayer: { player in
+                                                viewModel.assignEnglandPlayer(player, to: member.id)
                                             }
                                         )
                                     }
@@ -115,18 +193,18 @@ struct TeamSetupView: View {
                                     Text("Substitutes")
                                         .font(.headline)
                                     Spacer()
-                                    Text("\(viewModel.game.substitutes.count)/8")
+                                    Text("\(viewModel.game.namedSubstitutes.count)/8 named")
                                         .font(.caption.weight(.semibold))
                                         .padding(.horizontal, 8)
                                         .padding(.vertical, 4)
                                         .background(
                                             Capsule()
-                                                .fill(viewModel.game.substitutes.count == 8 ? Color.green.opacity(0.18) : Color.orange.opacity(0.18))
+                                                .fill(viewModel.game.namedSubstitutes.count == 8 ? Color.green.opacity(0.18) : Color.orange.opacity(0.18))
                                         )
-                                        .foregroundColor(viewModel.game.substitutes.count == 8 ? .green : .orange)
+                                        .foregroundColor(viewModel.game.namedSubstitutes.count == 8 ? .green : .orange)
                                 }
                                 
-                                Text("Add exactly 8 substitutes. You can link substitutes to starters.")
+                                Text("Substitute names are optional during setup. You can assign them while scoring.")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                 
@@ -138,8 +216,13 @@ struct TeamSetupView: View {
                                             isStarter: false,
                                             availableSubstitutes: [],
                                             starters: viewModel.game.starters,
+                                            squadPlayer: viewModel.englandSquadPlayer(named: member.name),
+                                            availableSquadPlayers: viewModel.availableEnglandSquadPlayers(excluding: member.id),
                                             onUpdate: { updatedMember in
                                                 viewModel.updateTeamMember(updatedMember)
+                                            },
+                                            onSelectSquadPlayer: { player in
+                                                viewModel.assignEnglandPlayer(player, to: member.id)
                                             }
                                         )
                                     }
@@ -155,14 +238,8 @@ struct TeamSetupView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    showResetConfirmation = true
-                } label: {
-                    Image(systemName: "arrow.counterclockwise")
-                }
-            }
+        .sheet(isPresented: $showFixturePicker) {
+            MatchdayImportView().environmentObject(viewModel)
         }
         .alert("Reset Team", isPresented: $showResetConfirmation) {
             Button("Cancel", role: .cancel) { }
@@ -171,6 +248,19 @@ struct TeamSetupView: View {
             }
         } message: {
             Text("Are you sure you want to clear all team information? This will remove all player names and cannot be undone.")
+        }
+        .alert("No Players Found", isPresented: $showImportFailure) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Try another photo with the full team list clearly visible, or enter the names manually.")
+        }
+        .alert("England Squad Import", isPresented: Binding(
+            get: { englandImportError != nil },
+            set: { if !$0 { englandImportError = nil } }
+        )) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(englandImportError ?? "")
         }
         .sheet(isPresented: $showPhotoPicker) {
             PhotoPickerView(selectedImage: $selectedImage) {
@@ -197,7 +287,7 @@ struct TeamSetupView: View {
             )
         }
         .overlay {
-            if isProcessingImage {
+            if isProcessingImage || isImportingEnglandSquad {
                 ZStack {
                     Color.black.opacity(0.3)
                         .ignoresSafeArea()
@@ -205,7 +295,7 @@ struct TeamSetupView: View {
                     VStack(spacing: 16) {
                         ProgressView()
                             .scaleEffect(1.5)
-                        Text("Extracting player information...")
+                        Text(isImportingEnglandSquad ? "Importing England squad…" : "Extracting player information...")
                             .foregroundColor(.white)
                             .font(.headline)
                     }
@@ -228,7 +318,22 @@ struct TeamSetupView: View {
                 extractedPlayers = players
                 if !players.isEmpty {
                     showImportReview = true
+                } else {
+                    showImportFailure = true
                 }
+            }
+        }
+    }
+
+    private func importEnglandSquad() {
+        isImportingEnglandSquad = true
+        Task {
+            do {
+                try await viewModel.importEnglandSquad()
+                isImportingEnglandSquad = false
+            } catch {
+                isImportingEnglandSquad = false
+                englandImportError = error.localizedDescription
             }
         }
     }
@@ -238,36 +343,49 @@ struct TeamMemberRow: View {
     let member: TeamMember
     let shirtNumber: Int
     let isStarter: Bool
+    let showsDrawPreparation: Bool
     let availableSubstitutes: [TeamMember]
     let starters: [TeamMember]
+    let squadPlayer: EnglandSquadPlayer?
+    let availableSquadPlayers: [EnglandSquadPlayer]
     let onUpdate: (TeamMember) -> Void
     var onToggleEnabled: (() -> Void)? = nil
     var onLinkSubstitute: ((UUID) -> Void)? = nil
     var onUnlinkSubstitute: (() -> Void)? = nil
+    var onSelectSquadPlayer: ((EnglandSquadPlayer?) -> Void)? = nil
     
     @State private var name: String
     @State private var showSubstitutePicker = false
+    @State private var showEnglandPlayerPicker = false
     
     init(
         member: TeamMember,
         shirtNumber: Int,
         isStarter: Bool,
+        showsDrawPreparation: Bool = true,
         availableSubstitutes: [TeamMember],
         starters: [TeamMember],
+        squadPlayer: EnglandSquadPlayer? = nil,
+        availableSquadPlayers: [EnglandSquadPlayer] = [],
         onUpdate: @escaping (TeamMember) -> Void,
         onToggleEnabled: (() -> Void)? = nil,
         onLinkSubstitute: ((UUID) -> Void)? = nil,
         onUnlinkSubstitute: (() -> Void)? = nil
+        , onSelectSquadPlayer: ((EnglandSquadPlayer?) -> Void)? = nil
     ) {
         self.member = member
         self.shirtNumber = shirtNumber
         self.isStarter = isStarter
+        self.showsDrawPreparation = showsDrawPreparation
         self.availableSubstitutes = availableSubstitutes
         self.starters = starters
+        self.squadPlayer = squadPlayer
+        self.availableSquadPlayers = availableSquadPlayers
         self.onUpdate = onUpdate
         self.onToggleEnabled = onToggleEnabled
         self.onLinkSubstitute = onLinkSubstitute
         self.onUnlinkSubstitute = onUnlinkSubstitute
+        self.onSelectSquadPlayer = onSelectSquadPlayer
         _name = State(initialValue: member.name)
     }
     
@@ -281,16 +399,25 @@ struct TeamMemberRow: View {
                     .fixedSize(horizontal: true, vertical: false)
                     .frame(width: 35, alignment: .leading)
                 
-                TextField("Name", text: $name)
-                    .textFieldStyle(.roundedBorder)
-                    .onChange(of: name) { _, newValue in
-                        var updated = member
-                        updated.name = newValue
-                        onUpdate(updated)
+                if onSelectSquadPlayer != nil && !availableSquadPlayers.isEmpty {
+                    Button {
+                        showEnglandPlayerPicker = true
+                    } label: {
+                        EnglandPlayerSummary(player: squadPlayer, fallbackName: member.name)
                     }
+                    .buttonStyle(.plain)
+                } else {
+                    TextField("Name", text: $name)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: name) { _, newValue in
+                            var updated = member
+                            updated.name = newValue
+                            onUpdate(updated)
+                        }
+                }
             }
             
-            if isStarter {
+            if isStarter && showsDrawPreparation {
                 Toggle("Enabled for Game", isOn: Binding(
                     get: { member.isEnabledForGame },
                     set: { _ in onToggleEnabled?() }
@@ -334,6 +461,16 @@ struct TeamMemberRow: View {
                 onUnlink: {
                     onUnlinkSubstitute?()
                     showSubstitutePicker = false
+                }
+            )
+        }
+        .sheet(isPresented: $showEnglandPlayerPicker) {
+            EnglandPlayerPickerView(
+                players: availableSquadPlayers,
+                currentPlayer: squadPlayer,
+                onSelect: { player in
+                    onSelectSquadPlayer?(player)
+                    showEnglandPlayerPicker = false
                 }
             )
         }
@@ -400,8 +537,7 @@ struct SubstitutePickerView: View {
                                             .foregroundColor(.secondary)
                                             .lineLimit(1)
                                             .fixedSize(horizontal: true, vertical: false)
-                                    Text(substitute.name.isEmpty ? "Unnamed Substitute" : substitute.name)
-                                        .foregroundColor(.primary)
+                                    TeamMemberProfileView(member: substitute, imageSize: 36)
                                     
                                     Spacer()
                                     
@@ -417,9 +553,11 @@ struct SubstitutePickerView: View {
                                         Image(systemName: "arrow.right.circle.fill")
                                             .font(.caption2)
                                             .foregroundColor(.blue)
-                                        Text("Substitutes for #\(starterIndex + 1) \(starter.name)")
-                                            .font(.caption)
-                                            .foregroundColor(.blue)
+                                        TeamMemberProfileView(
+                                            member: starter,
+                                            imageSize: 26,
+                                            namePrefix: "For #\(starterIndex + 1): "
+                                        )
                                     }
                                 }
                             }
@@ -439,4 +577,3 @@ struct SubstitutePickerView: View {
             .environmentObject(GameViewModel())
     }
 }
-

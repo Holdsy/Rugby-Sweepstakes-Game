@@ -13,7 +13,7 @@ struct Rugby_Sweepstakes_GameApp: App {
     
     var body: some Scene {
         WindowGroup {
-            HomeView()
+            AppRootView()
                 .environmentObject(gameViewModel)
         }
     }

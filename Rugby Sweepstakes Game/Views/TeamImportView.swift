@@ -29,9 +29,17 @@ struct TeamImportView: View {
                         }
                     } else {
                         Section {
-                            Text("Review and edit the extracted players. Select which players to import as starters.")
+                            Text("Review the team. Selected players 1–15 become starters and 16–23 become substitutes.")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+
+                            Button(selectedPlayers.count == min(extractedPlayers.count, 23) ? "Clear Selection" : "Select First 23") {
+                                if selectedPlayers.count == min(extractedPlayers.count, 23) {
+                                    selectedPlayers.removeAll()
+                                } else {
+                                    selectedPlayers = Set(extractedPlayers.indices.prefix(23))
+                                }
+                            }
                         }
                         
                         Section {
@@ -62,6 +70,11 @@ struct TeamImportView: View {
                     }
                 }
                 .scrollContentBackground(.hidden)
+                .onAppear {
+                    if selectedPlayers.isEmpty {
+                        selectedPlayers = Set(extractedPlayers.indices.prefix(23))
+                    }
+                }
             }
             .navigationTitle("Import Team")
             .navigationBarTitleDisplayMode(.inline)
@@ -166,4 +179,3 @@ struct PlayerImportRow: View {
         }
     }
 }
-

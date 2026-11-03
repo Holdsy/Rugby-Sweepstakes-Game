@@ -114,12 +114,12 @@ struct DrawResultsView: View {
                                                         .foregroundColor(.secondary)
                                                     
                                                     ForEach(rounds[roundNumber] ?? [], id: \.id) { member in
-                                                        if let linkedSubstitute = viewModel.getLinkedSubstitute(for: member.id) {
-                                                            Text("• \(member.displayName(linkedSubstitute: linkedSubstitute))")
-                                                                .font(.caption)
-                                                        } else {
-                                                            Text("• \(member.name)\(member.position.map { " - " + $0 } ?? "")")
-                                                                .font(.caption)
+                                                        VStack(alignment: .leading, spacing: 4) {
+                                                            TeamMemberProfileView(member: member)
+                                                            if let linkedSubstitute = viewModel.getLinkedSubstitute(for: member.id) {
+                                                                TeamMemberProfileView(member: linkedSubstitute, imageSize: 30, namePrefix: "On: ")
+                                                                    .padding(.leading, 18)
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -132,6 +132,18 @@ struct DrawResultsView: View {
                         }
                     }
                     .padding(.horizontal)
+
+                    NavigationLink {
+                        ScoringView()
+                    } label: {
+                        Label("Start Scoring", systemImage: "sportscourt.fill")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 12))
+                            .foregroundStyle(.white)
+                    }
+                    .padding(.horizontal)
                     
                     Spacer(minLength: 24)
                 }
@@ -139,15 +151,6 @@ struct DrawResultsView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                NavigationLink {
-                    ScoringView()
-                } label: {
-                    Text("Start Scoring")
-                }
-            }
-        }
         .sheet(isPresented: $isSharing) {
             ShareSheet(activityItems: [shareText])
         }
@@ -181,4 +184,3 @@ struct DrawResultsView: View {
             .environmentObject(GameViewModel())
     }
 }
-
