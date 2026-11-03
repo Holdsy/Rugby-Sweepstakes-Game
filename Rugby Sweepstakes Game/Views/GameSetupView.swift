@@ -7,6 +7,8 @@ struct GameSetupView: View {
     @State private var step = 0
     @State private var showFixturePicker = false
     @State private var showTeamEditor = false
+    @ObservedObject private var drafts = TeamDraftStore.shared
+    @State private var selectedDraft: TeamLineupDraft?
     @State private var showAddParticipant = false
     @State private var newParticipantName = ""
     @State private var showExclusions = false
@@ -77,6 +79,7 @@ struct GameSetupView: View {
                 .background(.regularMaterial)
             }
             .sheet(isPresented: $showFixturePicker) { MatchdayImportView().environmentObject(viewModel) }
+            .sheet(item: $selectedDraft) { draft in SavedTeamDraftReviewView(draft: draft).environmentObject(viewModel) }
             .sheet(isPresented: $showTeamEditor) {
                 CurrentTeamReviewView().environmentObject(viewModel)
             }
@@ -106,6 +109,19 @@ struct GameSetupView: View {
                 Label(viewModel.game.isTeamSetupComplete ? "Review or Edit Team" : "Finalise Team", systemImage: "person.3")
             }
         } header: { Text("Choose your team") }
+        if !viewModel.game.isDrawComplete && !drafts.drafts(for: viewModel.game.id).isEmpty {
+            Section("Saved team drafts") {
+                ForEach(drafts.drafts(for: viewModel.game.id)) { draft in
+                    Button { selectedDraft = draft } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(draft.fixtureName ?? draft.teamName).font(.headline)
+                            Text("\(draft.teamName) · \(draft.namedCount) of 23 named").font(.subheadline)
+                            Text("Saved \(draft.updatedAt.formatted(date: .abbreviated, time: .shortened))").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
         Section("Current selection") {
             if viewModel.game.fixtureName != nil { LabeledContent("Fixture", value: viewModel.game.displayTitle) }
             if let source = viewModel.game.providerName {

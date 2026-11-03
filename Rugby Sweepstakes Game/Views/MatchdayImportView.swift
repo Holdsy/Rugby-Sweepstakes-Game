@@ -219,7 +219,7 @@ private struct FixtureTeamsView: View {
         let name = home ? fixture.homeTeam.name : fixture.awayTeam.name
         let sheet = home ? fixture.lineups?.home : fixture.lineups?.away
         return NavigationLink {
-            MatchdayLineupReview(teamName: name, sheet: sheet, isSample: isSample, matchID: isSample ? nil : fixture.id) { players, edited in
+            MatchdayLineupReview(teamName: name, sheet: sheet, isSample: isSample, matchID: isSample ? nil : fixture.id, fixtureName: fixture.title, fixtureDate: fixture.date) { players, edited in
                 onImport(fixture, name, players, edited)
             }
         } label: {
@@ -252,6 +252,14 @@ private struct MatchdayLineupReview: View {
     let isSample: Bool
     let matchID: Int?
     let onImport: ([ExtractedPlayer], Bool) -> Void
+    let fixtureName: String?
+    let fixtureDate: String?
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var drafts = TeamDraftStore.shared
+    @State private var draftLoaded = false
+    @State private var savedAt: Date?
+    @State private var draftError: String?
+    @State private var finalised = false
     @State private var names: [String]
     @State private var confirmImport = false
     @State private var showPhotoPicker = false
@@ -269,7 +277,8 @@ private struct MatchdayLineupReview: View {
     private struct SquadSlot: Identifiable { let id: Int }
 
     init(teamName: String, sheet: MatchdayFixture.TeamSheet?, isSample: Bool, matchID: Int? = nil,
-         initialPlayers: [ExtractedPlayer]? = nil, onImport: @escaping ([ExtractedPlayer], Bool) -> Void) {
+         initialPlayers: [ExtractedPlayer]? = nil, fixtureName: String? = nil, fixtureDate: String? = nil, onImport: @escaping ([ExtractedPlayer], Bool) -> Void) {
+        self.fixtureName = fixtureName; self.fixtureDate = fixtureDate
         self.teamName = teamName; self.sheet = sheet; self.isSample = isSample; self.matchID = matchID; self.onImport = onImport
         let values = (1...23).map { number in
             initialPlayers?.first { $0.number == number }?.name ?? sheet?.players.first { $0.shirtNumber == number }?.name ?? ""
@@ -285,6 +294,13 @@ private struct MatchdayLineupReview: View {
             Section("Finalise your team") {
                 if isSample { Text("Historical sample").font(.caption).foregroundStyle(.secondary) }
                 Text("Enter names below, import a team-sheet photo or load the available lineup. Check the shirt numbers before using this team.")
+                if let savedAt {
+                    Label("Draft saved \(savedAt.formatted(date: .omitted, time: .shortened))", systemImage: "checkmark.circle")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Text("Your edits are saved automatically on this device. Resume this draft from Match & Team.")
+                    .font(.caption).foregroundStyle(.secondary)
+                if let draftError { Text(draftError).foregroundStyle(.orange) }
                 LabeledContent("Named", value: "\(23 - missing) of 23")
                 if missing > 0 { Text("\(missing) more \(missing == 1 ? "name is" : "names are") needed to use this team.").font(.caption).foregroundStyle(.secondary) }
                 if sheet == nil && matchID != nil && sourceNote == nil {
@@ -327,6 +343,8 @@ private struct MatchdayLineupReview: View {
         .toolbar(.visible, for: .navigationBar)
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 6) {
+                Button("Save Draft & Close") { if saveDraft() { dismiss() } }
+                    .disabled(locked || busy)
                 Button("Use This Team") { confirmImport = true }
                     .buttonStyle(.borderedProminent).controlSize(.large)
                     .frame(maxWidth: .infinity)
@@ -338,6 +356,8 @@ private struct MatchdayLineupReview: View {
         .confirmationDialog("Use this team for your sweepstake?", isPresented: $confirmImport, titleVisibility: .visible) {
             Button("Use This Team") {
                 guard missing == 0 && !locked else { return }
+                finalised = true
+                if let draft = matchingDraft { try? drafts.remove(id: draft.id) }
                 onImport(names.enumerated().map { ExtractedPlayer(number: $0.offset + 1, name: $0.element.trimmingCharacters(in: .whitespacesAndNewlines)) }, sheet == nil || names != originalNames)
             }
         } message: { Text("This replaces the team in your current setup. Your participants remain selected.") }
@@ -367,6 +387,28 @@ private struct MatchdayLineupReview: View {
             }, teamName: teamName)
         }
         .sheet(isPresented: $showPhotoSources) { PhotoSourcesView() }
+        .onAppear {
+            guard !draftLoaded else { return }
+            if !locked, let draft = matchingDraft {
+                names = draft.names; sourceNote = draft.sourceNote; savedAt = draft.updatedAt
+            }
+            draftLoaded = true
+        }
+        .onChange(of: names) { _, _ in if draftLoaded { saveDraft() } }
+        .onChange(of: sourceNote) { _, _ in if draftLoaded { saveDraft() } }
+    }
+
+    private var matchingDraft: TeamLineupDraft? {
+        drafts.find(gameID: viewModel.game.id, matchID: matchID, fixtureName: fixtureName, fixtureDate: fixtureDate, teamName: teamName, isSample: isSample)
+    }
+    @discardableResult private func saveDraft() -> Bool {
+        guard !locked && !finalised else { return false }
+        do {
+            let saved = try drafts.save(gameID: viewModel.game.id, matchID: matchID, fixtureName: fixtureName, fixtureDate: fixtureDate,
+                teamName: teamName, isSample: isSample, names: names, sourceNote: sourceNote)
+            savedAt = saved.updatedAt; draftError = nil
+            return true
+        } catch { draftError = error.localizedDescription; return false }
     }
 
     private var squadPlayers: [EnglandSquadPlayer] {
@@ -450,13 +492,32 @@ struct CurrentTeamReviewView: View {
         NavigationStack {
             MatchdayLineupReview(teamName: viewModel.game.selectedTeamName ?? "Your Team", sheet: nil, isSample: false,
                 matchID: viewModel.game.providerMatchID,
-                initialPlayers: viewModel.game.teamMembers.enumerated().map { ExtractedPlayer(number: $0.offset + 1, name: $0.element.name) }) { players, _ in
+                initialPlayers: viewModel.game.teamMembers.enumerated().map { ExtractedPlayer(number: $0.offset + 1, name: $0.element.name) },
+                fixtureName: viewModel.game.fixtureName, fixtureDate: viewModel.game.fixtureDate) { players, _ in
                 let game = viewModel.game
                 viewModel.importMatchdayTeam(players, fixtureName: game.fixtureName, teamName: game.selectedTeamName,
                     fixtureDate: game.fixtureDate, providerMatchID: game.providerMatchID, providerName: "Reviewed team")
                 dismiss()
             }
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
+        }
+    }
+}
+
+struct SavedTeamDraftReviewView: View {
+    let draft: TeamLineupDraft
+    @EnvironmentObject private var viewModel: GameViewModel
+    @Environment(\.dismiss) private var dismiss
+    var body: some View {
+        NavigationStack {
+            MatchdayLineupReview(teamName: draft.teamName, sheet: nil, isSample: draft.isSample, matchID: draft.matchID,
+                initialPlayers: draft.names.enumerated().map { ExtractedPlayer(number: $0.offset + 1, name: $0.element) },
+                fixtureName: draft.fixtureName, fixtureDate: draft.fixtureDate) { players, _ in
+                viewModel.importMatchdayTeam(players, fixtureName: draft.fixtureName, teamName: draft.teamName,
+                    fixtureDate: draft.fixtureDate, providerMatchID: draft.matchID, providerName: "Reviewed team")
+                dismiss()
+            }
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } } }
         }
     }
 }
