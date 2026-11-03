@@ -112,7 +112,10 @@ struct MatchDayView: View {
         }
         .sheet(isPresented: $showSubstitution) { MatchSubstitutionSheet().environmentObject(viewModel) }
         .sheet(isPresented: $showHistory) { MatchActivityView().environmentObject(viewModel) }
-        .sheet(isPresented: $showShare) { ShareSheet(activityItems: [shareText]) }
+        .sheet(isPresented: $showShare) {
+            if section == .allocations { DrawShareView(game: viewModel.game, englandSquad: viewModel.englandSquad) }
+            else { ShareSheet(activityItems: [shareText]) }
+        }
     }
 
     @ViewBuilder private var scoreList: some View {
@@ -209,6 +212,13 @@ struct MatchDayView: View {
     }
 
     @ViewBuilder private var allocations: some View {
+        Section {
+            Button { showShare = true } label: {
+                Label("Share Draw with Player Photos", systemImage: "photo.on.rectangle")
+            }
+            Text("Create an image of the full draw to send on WhatsApp or another app.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
         ForEach(visibleParticipants) { participant in
             Section {
                 ForEach(participant.assignedTeamMemberIds, id: \.self) { id in

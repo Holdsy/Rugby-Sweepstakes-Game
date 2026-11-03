@@ -182,13 +182,14 @@ struct PlayerPortrait: View {
 }
 
 @MainActor
-private enum PlayerPortraitCache {
+enum PlayerPortraitCache {
     private static let images = NSCache<NSURL, UIImage>()
 
     static func image(at url: URL) async -> UIImage? {
         if let cached = images.object(forKey: url as NSURL) { return cached }
         do {
-            let (data, response) = try await URLSession.shared.data(from: url)
+            var request = URLRequest(url: url); request.timeoutInterval = 8
+            let (data, response) = try await URLSession.shared.data(for: request)
             guard !Task.isCancelled,
                   let response = response as? HTTPURLResponse,
                   (200...299).contains(response.statusCode),

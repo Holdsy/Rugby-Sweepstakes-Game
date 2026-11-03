@@ -152,7 +152,7 @@ struct DrawResultsView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .sheet(isPresented: $isSharing) {
-            ShareSheet(activityItems: [shareText])
+            DrawShareView(game: viewModel.game, englandSquad: viewModel.englandSquad)
         }
     }
     
