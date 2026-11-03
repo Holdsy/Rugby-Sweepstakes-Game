@@ -58,6 +58,7 @@ struct MatchDayView: View {
             if !viewModel.game.isDrawComplete {
                 ContentUnavailableView("Run the Draw First", systemImage: "shuffle", description: Text("Complete setup to open Match Day."))
             } else {
+                LiveMatchScoreView(matchID: viewModel.game.providerMatchID, providerName: viewModel.game.providerName)
                 if viewModel.game.isCompleted {
                     Section {
                         NavigationLink { GameResultsView(game: viewModel.game) } label: {

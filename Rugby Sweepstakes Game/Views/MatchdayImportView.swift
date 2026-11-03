@@ -543,7 +543,7 @@ struct SavedTeamDraftReviewView: View {
     }
 }
 
-private struct HighlightlyConnectionView: View {
+struct HighlightlyConnectionView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var key = ""
     @State private var connected = HighlightlyCredentials.load() != nil
