@@ -9,6 +9,7 @@ struct GameSetupView: View {
     @State private var showTeamEditor = false
     @ObservedObject private var drafts = TeamDraftStore.shared
     @State private var selectedDraft: TeamLineupDraft?
+    @State private var showDrafts = false
     @State private var showAddParticipant = false
     @State private var newParticipantName = ""
     @State private var showExclusions = false
@@ -79,6 +80,7 @@ struct GameSetupView: View {
                 .background(.regularMaterial)
             }
             .sheet(isPresented: $showFixturePicker) { MatchdayImportView().environmentObject(viewModel) }
+            .sheet(isPresented: $showDrafts) { DraftManagementView().environmentObject(viewModel) }
             .sheet(item: $selectedDraft) { draft in SavedTeamDraftReviewView(draft: draft).environmentObject(viewModel) }
             .sheet(isPresented: $showTeamEditor) {
                 CurrentTeamReviewView().environmentObject(viewModel)
@@ -109,7 +111,7 @@ struct GameSetupView: View {
                 Label(viewModel.game.isTeamSetupComplete ? "Review or Edit Team" : "Finalise Team", systemImage: "person.3")
             }
         } header: { Text("Choose your team") }
-        if !viewModel.game.isDrawComplete && !drafts.drafts(for: viewModel.game.id).isEmpty {
+        if !viewModel.game.isDrawComplete && !drafts.drafts.isEmpty {
             Section("Saved team drafts") {
                 ForEach(drafts.drafts(for: viewModel.game.id)) { draft in
                     Button { selectedDraft = draft } label: {
@@ -120,6 +122,7 @@ struct GameSetupView: View {
                         }
                     }
                 }
+                Button { showDrafts = true } label: { Label("Manage or Delete Drafts", systemImage: "doc.on.doc") }
             }
         }
         Section("Current selection") {

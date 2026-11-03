@@ -260,6 +260,7 @@ private struct MatchdayLineupReview: View {
     @State private var savedAt: Date?
     @State private var draftError: String?
     @State private var finalised = false
+    @State private var confirmDiscard = false
     @State private var names: [String]
     @State private var confirmImport = false
     @State private var showPhotoPicker = false
@@ -341,6 +342,26 @@ private struct MatchdayLineupReview: View {
         }
         .navigationTitle(teamName).navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button("Discard Draft", role: .destructive) { confirmDiscard = true }
+                        .disabled(matchingDraft == nil || locked || busy)
+                } label: { Image(systemName: "ellipsis.circle") }
+                .accessibilityLabel("Draft actions")
+            }
+        }
+        .confirmationDialog("Discard this team draft?", isPresented: $confirmDiscard, titleVisibility: .visible) {
+            Button("Discard Draft", role: .destructive) {
+                guard !locked && !busy else { return }
+                do {
+                    if let draft = matchingDraft { try drafts.remove(id: draft.id) }
+                    finalised = true
+                    dismiss()
+                } catch { draftError = error.localizedDescription }
+            }
+            Button("Keep Draft", role: .cancel) { }
+        } message: { Text("This removes the unfinished draft and closes the editor. Your saved team, participants and scores stay unchanged.") }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 6) {
                 Button("Save Draft & Close") { if saveDraft() { dismiss() } }

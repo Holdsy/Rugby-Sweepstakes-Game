@@ -6,6 +6,12 @@ struct HomeView: View {
     private struct SetupRequest: Identifiable { let id = UUID(); let step: Int }
     @State private var showResetConfirmation = false
     @State private var showBackup = false
+    @ObservedObject private var drafts = TeamDraftStore.shared
+    @State private var selectedDraft: TeamLineupDraft?
+    @State private var showDrafts = false
+    private var currentDrafts: [TeamLineupDraft] {
+        viewModel.game.isDrawComplete ? [] : drafts.drafts(for: viewModel.game.id)
+    }
 
     private var nextStep: Int {
         if !viewModel.game.isTeamSetupComplete { return 0 }
@@ -30,6 +36,18 @@ struct HomeView: View {
                             }
                         }
                         .foregroundStyle(.white)
+                        if let draft = currentDrafts.first {
+                            GlassCard {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Label("Unfinished Team", systemImage: "doc.text").font(.headline)
+                                    Text(draft.fixtureName ?? draft.teamName).font(.subheadline.weight(.semibold))
+                                    Text("\(draft.teamName) · \(draft.namedCount) of 23 named").font(.subheadline).foregroundStyle(.secondary)
+                                    Button { selectedDraft = draft } label: {
+                                        Label("Resume Draft", systemImage: "pencil").frame(maxWidth: .infinity)
+                                    }.buttonStyle(.borderedProminent).controlSize(.large)
+                                }
+                            }
+                        }
                         if viewModel.game.isCompleted { completedGame }
                         else if viewModel.game.isDrawComplete { matchDay }
                         else { setup }
@@ -37,6 +55,11 @@ struct HomeView: View {
                             Label("Start a New Game", systemImage: "plus.circle").frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent).controlSize(.large)
+                        if !drafts.drafts.isEmpty {
+                            Button { showDrafts = true } label: {
+                                Label("Manage Team Drafts (\(drafts.drafts.count))", systemImage: "doc.on.doc").frame(maxWidth: .infinity)
+                            }.buttonStyle(.bordered).tint(.white)
+                        }
                         Button { showBackup = true } label: {
                             Label("Backup & Restore", systemImage: "externaldrive").frame(maxWidth: .infinity)
                         }.buttonStyle(.bordered).tint(.white)
@@ -48,6 +71,8 @@ struct HomeView: View {
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
+            .sheet(item: $selectedDraft) { draft in SavedTeamDraftReviewView(draft: draft).environmentObject(viewModel) }
+            .sheet(isPresented: $showDrafts) { DraftManagementView().environmentObject(viewModel) }
             .sheet(isPresented: $showBackup) { BackupRestoreView().environmentObject(viewModel) }
             .sheet(item: $setupRequest) { request in GameSetupView(initialStep: request.step).environmentObject(viewModel) }
             .alert("Start a New Game?", isPresented: $showResetConfirmation) {
