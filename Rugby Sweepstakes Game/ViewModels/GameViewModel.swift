@@ -741,6 +741,18 @@ class GameViewModel: ObservableObject {
         saveGame()
     }
     
+    /// Storage has already been validated and replaced by the backup service.
+    func applyRestoredBackup(_ backup: RugbyAppBackup) {
+        game = backup.state.game
+        savedGames = backup.state.savedGames
+        masterPlayerList = backup.participants
+        englandSquad = backup.englandSquad
+        englandSquadImportedAt = backup.englandSquadImportedAt
+        storageWritesBlocked = false
+        persistenceError = nil
+        refreshLastScoringAction()
+    }
+
     // MARK: - Persistence
     
     @discardableResult

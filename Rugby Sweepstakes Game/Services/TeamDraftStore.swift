@@ -37,6 +37,10 @@ final class TeamDraftStore: ObservableObject {
             } catch { unreadable = true }
         }
     }
+    func reloadAfterRestore() {
+        guard let data = defaults.data(forKey: key), let restored = try? JSONDecoder().decode([TeamLineupDraft].self, from: data) else { return }
+        drafts = restored; unreadable = false
+    }
     func drafts(for gameID: UUID) -> [TeamLineupDraft] {
         drafts.filter { $0.gameID == gameID }.sorted { $0.updatedAt > $1.updatedAt }
     }

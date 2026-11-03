@@ -35,6 +35,13 @@ final class PlayerPhotoLibrary: ObservableObject {
         ]
         photos = defaults.data(forKey: "rugby_player_photo_matches_v1").flatMap { try? JSONDecoder().decode([String: CachedPhoto].self, from: $0) } ?? [:]
     }
+    func reloadAfterRestore() {
+        for task in pending.values { task.cancel() }
+        pending = [:]; photos = [:]; nextRequest = .distantPast; cooldownUntil = .distantPast
+        if let data = defaults.data(forKey: "rugby_photo_sources_v1"), let restored = try? JSONDecoder().decode([PhotoSquadSource].self, from: data) {
+            sources = restored; revision += 1
+        }
+    }
     func players(for team: String?) -> [EnglandSquadPlayer] {
         guard let team, !team.isEmpty else { return [] }
         let matching = sources.filter { Self.key($0.team) == Self.key(team) }
@@ -137,7 +144,7 @@ final class PlayerPhotoLibrary: ObservableObject {
             self.nextRequest = slot.addingTimeInterval(2.1)
             let delay = slot.timeIntervalSinceNow
             if delay > 0 { try? await Task.sleep(for: .seconds(delay)) }
-            guard Date() >= self.cooldownUntil else { return nil }
+            guard !Task.isCancelled, Date() >= self.cooldownUntil else { return nil }
             var components = URLComponents(string: "https://www.thesportsdb.com/api/v1/json/123/searchplayers.php")!
             components.queryItems = [URLQueryItem(name: "p", value: name)]
             do {
@@ -150,6 +157,7 @@ final class PlayerPhotoLibrary: ObservableObject {
                 let values = try JSONDecoder().decode(Response.self, from: data)
                 let player = Self.match(name: name, team: team, players: values.player ?? [])
                 let url = [player?.strCutout, player?.strThumb].compactMap { $0 }.compactMap(URL.init(string:)).first { $0.scheme == "https" }
+                guard !Task.isCancelled else { return nil }
                 self.photos[cacheKey] = CachedPhoto(playerID: player?.idPlayer, url: url, checkedAt: Date())
                 if let data = try? JSONEncoder().encode(self.photos) { self.defaults.set(data, forKey: "rugby_player_photo_matches_v1") }
                 return url

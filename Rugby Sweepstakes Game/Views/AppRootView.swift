@@ -4,6 +4,7 @@ struct AppRootView: View {
     @EnvironmentObject private var viewModel: GameViewModel
     @State private var selection = AppTab.current
     @State private var currentNavigationID = UUID()
+    @State private var showRecovery = false
     private enum AppTab { case current, people, history }
 
     var body: some View {
@@ -16,10 +17,13 @@ struct AppRootView: View {
         .disabled(viewModel.storageWritesBlocked)
         .overlay {
             if viewModel.storageWritesBlocked {
-                ContentUnavailableView("Saved Games Unavailable", systemImage: "externaldrive.badge.exclamationmark", description: Text("Your existing save has been preserved. Close the app and investigate the saved data before making changes."))
-                    .padding().background(.regularMaterial)
+                VStack {
+                    ContentUnavailableView("Saved Games Unavailable", systemImage: "externaldrive.badge.exclamationmark", description: Text("Your existing save has been preserved. You can restore a previously exported backup."))
+                    Button("Backup & Restore") { showRecovery = true }.buttonStyle(.borderedProminent)
+                }.padding().background(.regularMaterial)
             }
         }
+        .sheet(isPresented: $showRecovery) { BackupRestoreView().environmentObject(viewModel) }
         .alert("Saved Games", isPresented: Binding(get: { viewModel.persistenceError != nil }, set: { if !$0 { viewModel.persistenceError = nil } })) {
             Button("OK") { viewModel.persistenceError = nil }
         } message: { Text(viewModel.persistenceError ?? "") }

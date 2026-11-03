@@ -5,6 +5,7 @@ struct HomeView: View {
     @State private var setupRequest: SetupRequest?
     private struct SetupRequest: Identifiable { let id = UUID(); let step: Int }
     @State private var showResetConfirmation = false
+    @State private var showBackup = false
 
     private var nextStep: Int {
         if !viewModel.game.isTeamSetupComplete { return 0 }
@@ -36,6 +37,9 @@ struct HomeView: View {
                             Label("Start a New Game", systemImage: "plus.circle").frame(maxWidth: .infinity)
                         }
                         .buttonStyle(.borderedProminent).controlSize(.large)
+                        Button { showBackup = true } label: {
+                            Label("Backup & Restore", systemImage: "externaldrive").frame(maxWidth: .infinity)
+                        }.buttonStyle(.bordered).tint(.white)
                         Text("Your current game is saved to History before a new one starts.")
                             .font(.caption).foregroundStyle(.white.opacity(0.85))
                     }
@@ -44,6 +48,7 @@ struct HomeView: View {
                 }
             }
             .toolbar(.hidden, for: .navigationBar)
+            .sheet(isPresented: $showBackup) { BackupRestoreView().environmentObject(viewModel) }
             .sheet(item: $setupRequest) { request in GameSetupView(initialStep: request.step).environmentObject(viewModel) }
             .alert("Start a New Game?", isPresented: $showResetConfirmation) {
                 Button("Cancel", role: .cancel) { }
